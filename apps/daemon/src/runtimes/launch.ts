@@ -49,16 +49,17 @@ export function applyAgentLaunchEnv(
 }
 
 function tryResolveCodexNativeBinary(wrapperPath: string): { path: string | null; diagnostic: string | null } {
-  const target = codexNativeTarget();
+  const packageSuffix = codexNativePackageSuffix();
+  const targetTriple = codexNativeTargetTriple();
   for (const root of codexSearchRoots(wrapperPath)) {
-    for (const candidate of codexNativeCandidates(root, target)) {
+    for (const candidate of codexNativeCandidates(root, packageSuffix, targetTriple)) {
       if (isExecutableFile(candidate)) return { path: candidate, diagnostic: null };
     }
   }
   if (!looksLikeCodexNodeWrapper(wrapperPath)) return { path: null, diagnostic: null };
   return {
     path: null,
-    diagnostic: `Codex native binary was not found for ${target}; falling back to wrapper ${wrapperPath}. Set CODEX_BIN to a native Codex binary if this wrapper cannot launch from a GUI environment.`,
+    diagnostic: `Codex native binary was not found for ${packageSuffix}/${targetTriple}; falling back to wrapper ${wrapperPath}. Set CODEX_BIN to a native Codex binary if this wrapper cannot launch from a GUI environment.`,
   };
 }
 
@@ -75,9 +76,9 @@ function codexSearchRoots(wrapperPath: string): string[] {
   return [...roots];
 }
 
-function codexNativeCandidates(root: string, target: string): string[] {
+function codexNativeCandidates(root: string, packageSuffix: string, targetTriple: string): string[] {
   const scoped = path.join(root, 'node_modules', '@openai');
-  const packageDirs = [path.join(scoped, `codex-${target}`)];
+  const packageDirs = [path.join(scoped, `codex-${packageSuffix}`)];
   try {
     for (const entry of readdirSync(scoped, { encoding: 'utf8', withFileTypes: true })) {
       if (entry.isDirectory() && entry.name.startsWith('codex-')) packageDirs.push(path.join(scoped, entry.name));
@@ -86,6 +87,8 @@ function codexNativeCandidates(root: string, target: string): string[] {
     // Optional package layouts vary by npm version; absence uses wrapper fallback.
   }
   return [...new Set(packageDirs)].flatMap((dir) => [
+    path.join(dir, 'vendor', targetTriple, 'codex', 'codex'),
+    path.join(dir, 'vendor', targetTriple, 'codex', 'codex.exe'),
     path.join(dir, 'codex'),
     path.join(dir, 'bin', 'codex'),
     path.join(dir, 'vendor', 'codex'),
@@ -94,10 +97,18 @@ function codexNativeCandidates(root: string, target: string): string[] {
   ]);
 }
 
-function codexNativeTarget(): string {
-  const platform = process.platform === 'win32' ? 'windows' : process.platform;
-  const arch = process.arch === 'x64' || process.arch === 'arm64' ? process.arch : process.arch;
-  return `${platform}-${arch}`;
+function codexNativePackageSuffix(): string {
+  return `${process.platform}-${process.arch}`;
+}
+
+function codexNativeTargetTriple(): string {
+  if (process.platform === 'darwin' && process.arch === 'arm64') return 'aarch64-apple-darwin';
+  if (process.platform === 'darwin' && process.arch === 'x64') return 'x86_64-apple-darwin';
+  if (process.platform === 'linux' && process.arch === 'arm64') return 'aarch64-unknown-linux-musl';
+  if (process.platform === 'linux' && process.arch === 'x64') return 'x86_64-unknown-linux-musl';
+  if (process.platform === 'win32' && process.arch === 'arm64') return 'aarch64-pc-windows-msvc';
+  if (process.platform === 'win32' && process.arch === 'x64') return 'x86_64-pc-windows-msvc';
+  return `${process.platform}-${process.arch}`;
 }
 
 function looksLikeCodexNodeWrapper(filePath: string): boolean {

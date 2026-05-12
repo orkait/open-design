@@ -1,5 +1,5 @@
 import { delimiter, join } from 'node:path';
-import { symlinkSync } from 'node:fs';
+import { realpathSync, symlinkSync } from 'node:fs';
 import { test } from 'vitest';
 import {
   applyAgentLaunchEnv,
@@ -62,11 +62,11 @@ fsTest('resolveAgentLaunch resolves a Codex npm wrapper to the native packaged b
       const wrapperRealPath = join(wrapperPkgDir, 'bin', 'codex.js');
       const wrapperLinkDir = join(root, 'node_modules', '.bin');
       const wrapperLinkPath = join(wrapperLinkDir, 'codex');
-      const nativePkgDir = join(root, 'node_modules', '@openai', `codex-${process.platform}-${process.arch}`);
-      const nativeBin = join(nativePkgDir, 'bin', 'codex');
+      const nativePkgDir = join(wrapperPkgDir, 'node_modules', '@openai', `codex-${process.platform}-${process.arch}`);
+      const nativeBin = join(nativePkgDir, 'vendor', codexNativeTargetTriple(), 'codex', 'codex');
       mkdirSync(join(wrapperPkgDir, 'bin'), { recursive: true });
       mkdirSync(wrapperLinkDir, { recursive: true });
-      mkdirSync(join(nativePkgDir, 'bin'), { recursive: true });
+      mkdirSync(join(nativePkgDir, 'vendor', codexNativeTargetTriple(), 'codex'), { recursive: true });
       writeFileSync(wrapperRealPath, '#!/usr/bin/env node\nrequire("@openai/codex");\n');
       writeFileSync(nativeBin, '#!/bin/sh\nexit 0\n');
       chmodSync(wrapperRealPath, 0o755);
@@ -78,7 +78,7 @@ fsTest('resolveAgentLaunch resolves a Codex npm wrapper to the native packaged b
       const launch = resolveAgentLaunch(codex);
 
       assert.equal(launch.selectedPath, wrapperLinkPath);
-      assert.equal(launch.launchPath, nativeBin);
+      assert.equal(launch.launchPath, realpathSync(nativeBin));
       assert.equal(launch.launchKind, 'codex-native');
       assert.deepEqual(launch.childPathPrepend, [wrapperLinkDir]);
       assert.equal(launch.diagnostic, null);
@@ -87,6 +87,16 @@ fsTest('resolveAgentLaunch resolves a Codex npm wrapper to the native packaged b
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+function codexNativeTargetTriple(): string {
+  if (process.platform === 'darwin' && process.arch === 'arm64') return 'aarch64-apple-darwin';
+  if (process.platform === 'darwin' && process.arch === 'x64') return 'x86_64-apple-darwin';
+  if (process.platform === 'linux' && process.arch === 'arm64') return 'aarch64-unknown-linux-musl';
+  if (process.platform === 'linux' && process.arch === 'x64') return 'x86_64-unknown-linux-musl';
+  if (process.platform === 'win32' && process.arch === 'arm64') return 'aarch64-pc-windows-msvc';
+  if (process.platform === 'win32' && process.arch === 'x64') return 'x86_64-pc-windows-msvc';
+  return `${process.platform}-${process.arch}`;
+}
 
 fsTest('resolveAgentLaunch preserves a direct native CODEX_BIN override as the selected launch path', () => {
   const root = mkdtempSync(join(tmpdir(), 'od-launch-codex-direct-native-'));
