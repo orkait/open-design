@@ -59,12 +59,18 @@ function buildSidecarLogSources(runtime: SidecarRuntimeContext<SidecarStamp>): L
       kind: "text",
       tailBytes: TAIL_BYTES_PER_LOG,
     });
-    sources.push({
-      name: `logs/${appKey}/renderer.log`,
-      absolutePath: join(dirname(absolutePath), "renderer.log"),
-      kind: "text",
-      tailBytes: TAIL_BYTES_PER_LOG,
-    });
+    // Only desktop runs an Electron renderer that writes `renderer.log`
+    // (see apps/desktop/src/main/runtime.ts). daemon and web are pure Node
+    // services with no renderer process, so listing the file there only
+    // produces missing-file placeholders and manifest warnings.
+    if (appKey === APP_KEYS.DESKTOP) {
+      sources.push({
+        name: `logs/${appKey}/renderer.log`,
+        absolutePath: join(dirname(absolutePath), "renderer.log"),
+        kind: "text",
+        tailBytes: TAIL_BYTES_PER_LOG,
+      });
+    }
   }
   return sources;
 }
