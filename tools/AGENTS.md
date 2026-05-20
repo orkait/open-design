@@ -4,6 +4,7 @@ Follow the root `AGENTS.md` first. This file only records module-level boundarie
 
 ## Active tools
 
+- `tools/bundle` provides `@open-design/tools-bundle` and the `tools-bundle` bin. It owns local direct bundle production, bundle descriptor validation, and local `packages/bundle` store add/list/resolve/delete workflows.
 - `tools/dev` provides `@open-design/tools-dev` and the `tools-dev` bin. It is the only currently active local development lifecycle control plane.
 - `pnpm tools-dev` manages daemon -> web -> desktop.
 - `pnpm tools-dev run web` runs foreground daemon + web for the Playwright webServer flow.
@@ -11,6 +12,11 @@ Follow the root `AGENTS.md` first. This file only records module-level boundarie
 - `tools/pack` provides `@open-design/tools-pack` and the `tools-pack` bin. The active slice is packaged artifact build/install/start/stop/logs/uninstall/cleanup/list/reset plus beta release artifact preparation for mac and Windows lanes, plus a Linux AppImage lane with optional containerized builds.
 - `tools/pr` provides `@open-design/tools-pr` and the `tools-pr` bin. It is the maintainer PR-duty control plane: a thin `gh` wrapper that encodes this repo's review-lane derivation, forbidden-surface flags, per-lane checklists, and validation-command suggestions. It must not perform side effects (approve / request changes / merge / close / push); those stay in explicit `gh` calls the maintainer runs.
 - `tools/serve` provides `@open-design/tools-serve` and the `tools-serve` bin. It owns local fixture services such as `tools-serve start updater`.
+
+## Bundle boundary
+
+- Keep bundle production and local bundle-store workflows in `tools/bundle`.
+- Keep `tools/dev` as a runtime consumer. It may accept a direct `--bundle-path` bundle root containing `bundle.json`, but it must not create, mutate, activate, list, or delete bundle-store entries.
 
 ## Packaging scope
 
@@ -31,6 +37,9 @@ Follow the root `AGENTS.md` first. This file only records module-level boundarie
 ```bash
 pnpm --filter @open-design/tools-dev typecheck
 pnpm --filter @open-design/tools-dev build
+pnpm --filter @open-design/tools-bundle typecheck
+pnpm --filter @open-design/tools-bundle build
+pnpm tools-bundle validate <bundle-path>
 pnpm --filter @open-design/tools-pack typecheck
 pnpm --filter @open-design/tools-pack build
 pnpm --filter @open-design/tools-pr typecheck

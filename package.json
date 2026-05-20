@@ -11,6 +11,7 @@
   },
   "scripts": {
     "postinstall": "node ./scripts/postinstall.mjs",
+    "tools-bundle": "pnpm exec tools-bundle",
     "tools-dev": "pnpm exec tools-dev",
     "tools-pack": "pnpm exec tools-pack",
     "tools-pr": "pnpm exec tools-pr",
@@ -25,6 +26,7 @@
     "typecheck": "pnpm -r --workspace-concurrency=4 --if-present run typecheck && tsc -p scripts/tsconfig.json --noEmit"
   },
   "devDependencies": {
+    "@open-design/tools-bundle": "workspace:*",
     "@open-design/tools-dev": "workspace:*",
     "@open-design/tools-pack": "workspace:*",
     "@open-design/tools-pr": "workspace:*",

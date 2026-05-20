@@ -16,6 +16,7 @@ const buildTargets = [
   "packages/sidecar-proto",
   "packages/sidecar",
   "packages/platform",
+  "tools/bundle",
   "tools/dev",
   "tools/pack",
   "tools/pr",

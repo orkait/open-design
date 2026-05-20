@@ -11,8 +11,11 @@ import {
   deleteBundleKey,
   listBundles,
   replaceBundle,
+  resolveBundleArtifact,
+  resolveBundleEntryPath,
   resolveBundle,
   resolveBundleBasePath,
+  validateBundleDescriptor,
   validateBundleRef,
 } from "../src/index.js";
 
@@ -68,6 +71,63 @@ describe("bundle refs", () => {
       env: {},
       namespaceDataPath: "/tmp/ns-data",
     })).toBe("/tmp/ns-data/bundles");
+  });
+});
+
+describe("bundle artifact descriptors", () => {
+  it("validates the minimal direct bundle descriptor shape", () => {
+    expect(validateBundleDescriptor({
+      entry: { kind: "tsx", path: "sidecar/index.ts" },
+      schemaVersion: 1,
+    })).toEqual({
+      entry: { kind: "tsx", path: "sidecar/index.ts" },
+      schemaVersion: 1,
+    });
+    expect(validateBundleDescriptor({
+      entry: { kind: "js", path: "sidecar/index.mjs" },
+      schemaVersion: 1,
+    })).toEqual({
+      entry: { kind: "js", path: "sidecar/index.mjs" },
+      schemaVersion: 1,
+    });
+    expect(() => validateBundleDescriptor({ entry: { kind: "ts", path: "sidecar/index.ts" }, schemaVersion: 1 })).toThrow(BundleStoreError);
+    expect(() => validateBundleDescriptor({ entry: { kind: "tsx", path: "/tmp/entry.ts" }, schemaVersion: 1 })).toThrow(BundleStoreError);
+    expect(() => validateBundleDescriptor({ entry: { kind: "tsx", path: "../entry.ts" }, schemaVersion: 1 })).not.toThrow();
+    expect(() => resolveBundleEntryPath({
+      bundlePath: "/tmp/bundle",
+      descriptor: { entry: { kind: "tsx", path: "../entry.ts" }, schemaVersion: 1 },
+    })).toThrow(BundleStoreError);
+  });
+
+  it("resolves direct bundle roots through bundle.json", async () => {
+    const bundlePath = await sourceTree("direct-bundle", {
+      "bundle.json": JSON.stringify({
+        entry: { kind: "js", path: "sidecar/index.mjs" },
+        schemaVersion: 1,
+      }),
+      "sidecar/index.mjs": "export {};\n",
+    });
+
+    await expect(resolveBundleArtifact(bundlePath)).resolves.toMatchObject({
+      bundlePath,
+      descriptor: {
+        entry: { kind: "js", path: "sidecar/index.mjs" },
+        schemaVersion: 1,
+      },
+      entryPath: join(bundlePath, "sidecar", "index.mjs"),
+    });
+  });
+
+  it("rejects direct bundle descriptors whose entry escapes the bundle root", async () => {
+    const bundlePath = await sourceTree("escaped-direct-bundle", {
+      "bundle.json": JSON.stringify({
+        entry: { kind: "tsx", path: "../outside.ts" },
+        schemaVersion: 1,
+      }),
+      "sidecar/index.ts": "export {};\n",
+    });
+
+    await expect(resolveBundleArtifact(bundlePath)).rejects.toMatchObject({ code: "bundle-entry-path-escaped" });
   });
 });
 

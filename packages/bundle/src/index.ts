@@ -14,6 +14,8 @@ import {
 import { isAbsolute, join, relative, resolve } from "node:path";
 
 export const BUNDLE_BASE_PATH_ENV = "OD_BUNDLE_BASE_PATH";
+export const BUNDLE_DESCRIPTOR_FILE = "bundle.json";
+export const BUNDLE_DESCRIPTOR_SCHEMA_VERSION = 1;
 export const BUNDLE_METADATA_FILE = "metadata.json";
 export const BUNDLE_OBJECTS_DIR = "objects";
 export const BUNDLE_STAGING_DIR = ".staging";
@@ -22,6 +24,23 @@ export const BUNDLE_STORE_VERSION = 1;
 export type BundleRef = {
   key: string;
   version: string;
+};
+
+export type BundleEntryKind = "js" | "tsx";
+
+export type BundleArtifactDescriptor = {
+  entry: {
+    kind: BundleEntryKind;
+    path: string;
+  };
+  schemaVersion: typeof BUNDLE_DESCRIPTOR_SCHEMA_VERSION;
+};
+
+export type BundleArtifact = {
+  bundlePath: string;
+  descriptor: BundleArtifactDescriptor;
+  descriptorPath: string;
+  entryPath: string;
 };
 
 export type BundleEntry = {
@@ -125,6 +144,37 @@ export function validateBundleRef(ref: BundleRef): BundleRef {
   };
 }
 
+export function validateBundleDescriptor(value: unknown): BundleArtifactDescriptor {
+  if (!isRecord(value) || value.schemaVersion !== BUNDLE_DESCRIPTOR_SCHEMA_VERSION) {
+    throw new BundleStoreError("bundle-descriptor-invalid", "bundle descriptor must contain schemaVersion=1");
+  }
+
+  const entry = value.entry;
+  if (!isRecord(entry)) {
+    throw new BundleStoreError("bundle-descriptor-invalid", "bundle descriptor entry must be an object");
+  }
+
+  if (entry.kind !== "js" && entry.kind !== "tsx") {
+    throw new BundleStoreError("bundle-entry-kind-invalid", "bundle descriptor entry kind must be js or tsx");
+  }
+
+  if (typeof entry.path !== "string" || entry.path.length === 0) {
+    throw new BundleStoreError("bundle-entry-path-invalid", "bundle descriptor entry path must be a non-empty string");
+  }
+  assertNoNullBytes(entry.path, "bundle descriptor entry path");
+  if (isAbsolute(entry.path)) {
+    throw new BundleStoreError("bundle-entry-path-invalid", "bundle descriptor entry path must be relative");
+  }
+
+  return {
+    entry: {
+      kind: entry.kind,
+      path: entry.path.split("\\").join("/"),
+    },
+    schemaVersion: BUNDLE_DESCRIPTOR_SCHEMA_VERSION,
+  };
+}
+
 export function bundleRefsEqual(left: BundleRef, right: BundleRef): boolean {
   return left.key === right.key && left.version === right.version;
 }
@@ -141,6 +191,57 @@ export function bundleStorePaths(basePath: string): BundleStorePaths {
   return {
     basePath: resolvedBasePath,
     metadataPath: join(resolvedBasePath, BUNDLE_METADATA_FILE),
+  };
+}
+
+export function resolveBundleEntryPath(input: {
+  bundlePath: string;
+  descriptor: BundleArtifactDescriptor;
+}): string {
+  const bundlePath = resolveAbsolutePath(input.bundlePath, "bundle path");
+  const descriptor = validateBundleDescriptor(input.descriptor);
+  const entryPath = resolve(bundlePath, descriptor.entry.path);
+  if (!containsPath(bundlePath, entryPath)) {
+    throw new BundleStoreError("bundle-entry-path-escaped", "bundle descriptor entry path escaped the bundle path");
+  }
+  return entryPath;
+}
+
+export async function readBundleDescriptor(bundlePath: string): Promise<BundleArtifactDescriptor> {
+  const resolvedBundlePath = resolveAbsolutePath(bundlePath, "bundle path");
+  try {
+    return validateBundleDescriptor(JSON.parse(await readFile(join(resolvedBundlePath, BUNDLE_DESCRIPTOR_FILE), "utf8")));
+  } catch (error) {
+    if (error instanceof BundleStoreError) throw error;
+    throw new BundleStoreError("bundle-descriptor-read-failed", error instanceof Error ? error.message : String(error));
+  }
+}
+
+export async function resolveBundleArtifact(bundlePath: string): Promise<BundleArtifact> {
+  const resolvedBundlePath = resolveAbsolutePath(bundlePath, "bundle path");
+  const bundleInfo = await lstat(resolvedBundlePath);
+  if (!bundleInfo.isDirectory()) throw new BundleStoreError("bundle-path-not-directory", "bundle path must resolve to a directory");
+  if (bundleInfo.isSymbolicLink()) throw new BundleStoreError("bundle-path-symlink", "bundle path must not be a symlink");
+
+  const descriptor = await readBundleDescriptor(resolvedBundlePath);
+  const entryPath = resolveBundleEntryPath({ bundlePath: resolvedBundlePath, descriptor });
+  let entryInfo;
+  try {
+    entryInfo = await lstat(entryPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new BundleStoreError("bundle-entry-not-found", "bundle descriptor entry path does not exist");
+    }
+    throw error;
+  }
+  if (!entryInfo.isFile()) throw new BundleStoreError("bundle-entry-not-file", "bundle descriptor entry path must resolve to a file");
+  if (entryInfo.isSymbolicLink()) throw new BundleStoreError("bundle-entry-symlink", "bundle descriptor entry path must not be a symlink");
+
+  return {
+    bundlePath: resolvedBundlePath,
+    descriptor,
+    descriptorPath: join(resolvedBundlePath, BUNDLE_DESCRIPTOR_FILE),
+    entryPath,
   };
 }
 

@@ -139,19 +139,20 @@ function readSidecarImplementationEnv(): SidecarImplementationSnapshot | undefin
     }
     if (source === "bundle") {
       const ref = value.ref;
-      if (!isRecord(ref)) return undefined;
-      const key = stringField(ref, "key");
-      const version = stringField(ref, "version");
       const basePath = stringField(value, "basePath");
       const bundlePath = stringField(value, "bundlePath");
+      const descriptorPath = stringField(value, "descriptorPath");
       const entryPath = stringField(value, "entryPath");
-      if (key == null || version == null || basePath == null || bundlePath == null || entryPath == null) return undefined;
+      if (bundlePath == null || entryPath == null) return undefined;
+      const key = isRecord(ref) ? stringField(ref, "key") : null;
+      const version = isRecord(ref) ? stringField(ref, "version") : null;
       return {
-        basePath,
         bundlePath,
         entryPath,
-        ref: { key, version },
         source,
+        ...(basePath == null ? {} : { basePath }),
+        ...(descriptorPath == null ? {} : { descriptorPath }),
+        ...(key == null || version == null ? {} : { ref: { key, version } }),
         ...(stringField(value, "metadataPath") == null ? {} : { metadataPath: stringField(value, "metadataPath") as string }),
       };
     }

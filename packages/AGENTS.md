@@ -5,7 +5,7 @@ Follow the root `AGENTS.md` first. This file only records module-level boundarie
 ## Package responsibilities
 
 - `packages/contracts`: web/daemon app contract layer. Keep it pure TypeScript; it must not depend on Next.js, Express, Node filesystem/process APIs, browser APIs, SQLite, daemon internals, or the sidecar control-plane protocol.
-- `packages/bundle`: target-agnostic bundle inventory primitives. It owns bundle store metadata, object refs, path containment, and add/delete/replace/list/resolve operations. It must not know how a bundle is used, which app or sidecar consumes it, how it was downloaded/generated, or which activation policy selects it.
+- `packages/bundle`: target-agnostic bundle artifact and inventory primitives. It owns direct bundle descriptor validation, bundle store metadata, object refs, path containment, and add/delete/replace/list/resolve operations. It must not know how a bundle is used, which app or sidecar consumes it, how it was downloaded/generated, or which activation policy selects it.
 - `packages/host`: web/desktop host bridge contract. It models renderer-facing host capabilities and helpers while keeping `window.__od__` access out of app UI code.
 - `packages/sidecar-proto`: Open Design sidecar business protocol. Owns app/mode/source constants, namespace validation, stamp descriptor/fields/flags, IPC message schema, status shapes, error semantics, and default product path constants.
 - `packages/sidecar`: generic sidecar runtime primitives. Includes bootstrap, IPC transport, path/runtime resolution, launch env, and JSON runtime file helpers; it must not hard-code Open Design app keys or IPC business messages.

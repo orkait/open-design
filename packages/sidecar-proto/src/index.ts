@@ -148,11 +148,12 @@ export type SidecarImplementationSnapshot =
       source: "builtin";
     }
   | {
-      basePath: string;
+      basePath?: string;
       bundlePath: string;
+      descriptorPath?: string;
       entryPath: string;
       metadataPath?: string;
-      ref: SidecarImplementationRef;
+      ref?: SidecarImplementationRef;
       source: "bundle";
     }
   | {

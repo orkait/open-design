@@ -1,6 +1,5 @@
 import { cac } from "cac";
 
-import { registerBundleCommand } from "./commands/bundle.js";
 import { resolveToolDevConfig } from "./config.js";
 import type { CliOptions } from "./runtime/options.js";
 import { inspect } from "./runtime/inspect.js";
@@ -36,12 +35,13 @@ process.on("uncaughtException", exitWithError);
 process.on("unhandledRejection", exitWithError);
 
 const cli = cac("tools-dev");
+const COMMAND_NAMES = new Set(["start", "run", "status", "stop", "restart", "logs", "inspect", "check"]);
 
 function addSharedOptions(command: ReturnType<typeof cli.command>) {
   return command
     .option("--namespace <name>", "runtime namespace (default: default)")
     .option("--tools-dev-root <path>", "tools-dev runtime root")
-    .option("--bundle-base-path <path>", "bundle store base path (default: OD_BUNDLE_BASE_PATH or namespace data)")
+    .option("--bundle-path <path>", "direct bundle root containing bundle.json")
     .option("--json", "print JSON");
 }
 
@@ -88,8 +88,6 @@ addSharedOptions(cli.command("logs [app]", "Show log tail for daemon, web, deskt
   },
 );
 
-registerBundleCommand(cli, addSharedOptions);
-
 addSharedOptions(
   cli.command("inspect <app> [target]", "Inspect daemon/web status or desktop status/eval/screenshot/console/click"),
 )
@@ -116,6 +114,11 @@ process.argv.splice(2, process.argv.length - 2, ...cliArgs);
 
 if (cliArgs.length === 0 || (cliArgs[0]?.startsWith("-") && cliArgs[0] !== "--help" && cliArgs[0] !== "-h")) {
   process.argv.splice(2, 0, "start");
+}
+
+const commandName = process.argv[2];
+if (commandName != null && !commandName.startsWith("-") && !COMMAND_NAMES.has(commandName)) {
+  exitWithError(`unsupported tools-dev command: ${commandName}`);
 }
 
 cli.parse();

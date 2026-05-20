@@ -17,6 +17,7 @@ import {
   matchesStampedProcess,
   spawnBackgroundProcess,
 } from "@open-design/platform";
+import type { BundleEntryKind } from "@open-design/bundle";
 
 import { parsePortOption, type ToolDevAppName, type ToolDevConfig } from "../config.js";
 import { resolveWebImplementation, sidecarImplementationEnv, type ToolsDevWebSource } from "../bundles.js";
@@ -39,14 +40,9 @@ export function urlPort(url: string): string {
   return parsed.protocol === "https:" ? "443" : "80";
 }
 
-function formatBundleRef(ref: { key: string; version: string }): string {
-  return `${ref.key}@${ref.version}`;
-}
-
 function formatWebSource(source: ToolsDevWebSource): string {
   if (source.type === "workspace") return "workspace";
-  if (source.type === "explicitPath") return `explicit path ${source.entryPath}`;
-  return `bundle ${formatBundleRef(source.ref)} entry ${source.entry}`;
+  return `bundle ${source.artifact.bundlePath} entry ${source.artifact.descriptor.entry.path}`;
 }
 
 export function statusMatchesForcedPort(url: string | null | undefined, forcedPort: number | null): boolean {
@@ -150,14 +146,19 @@ export async function assertNoStaleProcess(config: ToolDevConfig, appName: ToolD
 async function spawnSidecarRuntime(request: {
   appName: typeof APP_KEYS.DAEMON | typeof APP_KEYS.WEB;
   config: ToolDevConfig;
+  entryKind?: BundleEntryKind;
   entryPath?: string;
   env: NodeJS.ProcessEnv;
   logHandle: FileHandle;
 }): Promise<{ pid: number }> {
   const { args: stampArgs, env } = createAppStamp(request.config, request.appName);
   const sidecarConfig = request.config.apps[request.appName];
+  const entryPath = request.entryPath ?? sidecarConfig.sidecarEntryPath;
+  const args = request.entryKind === "js"
+    ? [entryPath, ...stampArgs]
+    : [request.config.tsxCliPath, entryPath, ...stampArgs];
   const spawned = await spawnBackgroundProcess({
-    args: [request.config.tsxCliPath, request.entryPath ?? sidecarConfig.sidecarEntryPath, ...stampArgs],
+    args,
     command: process.execPath,
     cwd: request.config.workspaceRoot,
     detached: true,
@@ -221,6 +222,7 @@ export async function spawnWebRuntime(config: ToolDevConfig, options: CliOptions
     return await spawnSidecarRuntime({
       appName: APP_KEYS.WEB,
       config,
+      entryKind: webImplementation.entryKind,
       entryPath: webImplementation.entryPath,
       env: {
         NODE_PATH: prependNodePath([

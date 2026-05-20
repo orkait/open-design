@@ -6,14 +6,8 @@ import { describe, it } from "node:test";
 
 import type { ToolDevConfig } from "../src/config.js";
 import {
-  WEB_BUNDLE_ENTRY,
-  addToolsDevBundle,
-  deleteToolsDevBundle,
-  listToolsDevBundles,
-  normalizeBundleRef,
-  readToolsDevActivation,
   resolveWebImplementation,
-  writeWebSource,
+  sidecarImplementationEnv,
 } from "../src/bundles.js";
 
 async function makeTempConfig(): Promise<ToolDevConfig> {
@@ -47,8 +41,7 @@ async function makeTempConfig(): Promise<ToolDevConfig> {
         sidecarEntryPath: path.join(root, "workspace", "apps", "web", "sidecar", "index.ts"),
       },
     },
-    bundleActivationPath: path.join(dataRoot, "tools-dev-activation.json"),
-    bundleBasePath: path.join(dataRoot, "bundles"),
+    bundlePath: null,
     dataRoot,
     namespace: "test",
     namespaceRoot: root,
@@ -58,97 +51,78 @@ async function makeTempConfig(): Promise<ToolDevConfig> {
   };
 }
 
-async function makeBundleSource(root: string): Promise<string> {
-  const source = path.join(root, "source");
-  await mkdir(path.join(source, "sidecar"), { recursive: true });
-  await writeFile(path.join(source, "sidecar", "index.ts"), "export {};\n", "utf8");
-  await writeFile(path.join(source, "package.json"), "{\"name\":\"@open-design/web\"}\n", "utf8");
-  return source;
+async function makeDirectBundle(root: string, input: {
+  entryKind?: "js" | "tsx";
+  entryPath?: string;
+} = {}): Promise<string> {
+  const bundlePath = path.join(root, "bundle");
+  const entryPath = input.entryPath ?? "sidecar/index.ts";
+  await mkdir(bundlePath, { recursive: true });
+  await mkdir(path.dirname(path.join(bundlePath, entryPath)), { recursive: true });
+  await writeFile(path.join(bundlePath, entryPath), "export {};\n", "utf8");
+  await writeFile(path.join(bundlePath, "bundle.json"), `${JSON.stringify({
+    entry: {
+      kind: input.entryKind ?? "tsx",
+      path: entryPath,
+    },
+    schemaVersion: 1,
+  }, null, 2)}\n`, "utf8");
+  return bundlePath;
 }
 
-describe("tools-dev bundles", () => {
-  it("defaults to the workspace web sidecar when no activation exists", async () => {
+describe("tools-dev direct bundle consumption", () => {
+  it("defaults to the workspace web sidecar when no bundle path is provided", async () => {
     const config = await makeTempConfig();
 
-    const activation = await readToolsDevActivation(config);
     const implementation = await resolveWebImplementation(config);
 
-    assert.deepEqual(activation, { version: 1, web: { type: "workspace" } });
+    assert.equal(implementation.entryKind, "tsx");
     assert.equal(implementation.entryPath, config.apps.web.sidecarEntryPath);
     assert.equal(implementation.implementation, null);
+    assert.deepEqual(implementation.source, { type: "workspace" });
   });
 
-  it("stores bundle directories through packages/bundle and resolves active web source", async () => {
+  it("resolves a direct bundle root and serializes implementation diagnostics", async () => {
     const config = await makeTempConfig();
-    const sourcePath = await makeBundleSource(config.namespaceRoot);
-    const ref = normalizeBundleRef({ version: "dev.1" });
+    const bundlePath = await makeDirectBundle(config.namespaceRoot);
+    config.bundlePath = bundlePath;
 
-    const added = await addToolsDevBundle({ config, ref, sourcePath });
-    await writeWebSource(config, {
-      entry: WEB_BUNDLE_ENTRY,
-      ref,
-      type: "bundle",
-    });
     const implementation = await resolveWebImplementation(config);
-    const bundles = await listToolsDevBundles(config);
+    const env = sidecarImplementationEnv(implementation.implementation);
 
-    assert.equal(added.ref.key, "od:sidecar:web");
-    assert.equal(bundles.length, 1);
-    assert.equal(implementation.entryPath, path.join(added.path, WEB_BUNDLE_ENTRY));
+    assert.equal(implementation.entryKind, "tsx");
+    assert.equal(implementation.entryPath, path.join(bundlePath, "sidecar", "index.ts"));
     assert.equal(implementation.implementation?.source, "bundle");
-    if (implementation.implementation?.source !== "bundle") throw new Error("expected bundle implementation");
-    assert.equal(implementation.implementation.basePath, config.bundleBasePath);
-    assert.equal(implementation.implementation.bundlePath, added.path);
-    assert.deepEqual(implementation.implementation.ref, ref);
-  });
-
-  it("rejects bundle web entries that escape the resolved bundle path", async () => {
-    const config = await makeTempConfig();
-    const sourcePath = await makeBundleSource(config.namespaceRoot);
-    const ref = normalizeBundleRef({ version: "dev.2" });
-
-    await addToolsDevBundle({ config, ref, sourcePath });
-    await writeWebSource(config, {
-      entry: "../sidecar/index.ts",
-      ref,
-      type: "bundle",
-    });
-
-    await assert.rejects(resolveWebImplementation(config), /escaped bundle content/);
-  });
-
-  it("records explicit web sidecar paths without adding them to the bundle store", async () => {
-    const config = await makeTempConfig();
-    const entryPath = path.join(config.namespaceRoot, "explicit", "index.ts");
-    await mkdir(path.dirname(entryPath), { recursive: true });
-    await writeFile(entryPath, "export {};\n", "utf8");
-
-    await writeWebSource(config, {
-      entryPath,
-      persistent: true,
-      type: "explicitPath",
-    });
-    const implementation = await resolveWebImplementation(config);
-    const bundles = await listToolsDevBundles(config);
-
-    assert.deepEqual(bundles, []);
-    assert.equal(implementation.entryPath, entryPath);
     assert.deepEqual(implementation.implementation, {
-      entryPath,
-      persistent: true,
-      source: "explicitPath",
+      bundlePath,
+      descriptorPath: path.join(bundlePath, "bundle.json"),
+      entryPath: path.join(bundlePath, "sidecar", "index.ts"),
+      source: "bundle",
     });
+    assert.match(env.OD_SIDECAR_IMPLEMENTATION_JSON ?? "", /"source":"bundle"/);
   });
 
-  it("deletes stored bundle refs through packages/bundle", async () => {
+  it("preserves js entry kind so tools-dev can launch without tsx", async () => {
     const config = await makeTempConfig();
-    const sourcePath = await makeBundleSource(config.namespaceRoot);
-    const ref = normalizeBundleRef({ version: "dev.3" });
+    const bundlePath = await makeDirectBundle(config.namespaceRoot, {
+      entryKind: "js",
+      entryPath: "sidecar/index.mjs",
+    });
+    config.bundlePath = bundlePath;
 
-    await addToolsDevBundle({ config, ref, sourcePath });
+    const implementation = await resolveWebImplementation(config);
 
-    assert.equal(await deleteToolsDevBundle({ config, ref }), true);
-    assert.equal(await deleteToolsDevBundle({ config, ref }), false);
-    assert.deepEqual(await listToolsDevBundles(config), []);
+    assert.equal(implementation.entryKind, "js");
+    assert.equal(implementation.entryPath, path.join(bundlePath, "sidecar", "index.mjs"));
+  });
+
+  it("rejects direct bundle entries that escape the bundle root", async () => {
+    const config = await makeTempConfig();
+    const bundlePath = await makeDirectBundle(config.namespaceRoot, {
+      entryPath: "../outside.ts",
+    });
+    config.bundlePath = bundlePath;
+
+    await assert.rejects(resolveWebImplementation(config), /escaped the bundle path/);
   });
 });
