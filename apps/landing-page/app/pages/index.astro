@@ -3,6 +3,7 @@ import Page from '../page';
 import '../globals.css';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import GoogleAnalytics from '../_components/google-analytics.astro';
 import { heroImage } from '../image-assets';
 import { getCatalogCounts } from '../_lib/catalog';
 import { getGithubRepoMeta } from '../_lib/github';
@@ -41,6 +42,7 @@ const pageHtml = renderToStaticMarkup(
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={heroImage} />
+    <GoogleAnalytics />
   </head>
   <body>
     <Fragment set:html={pageHtml} />

@@ -18,6 +18,7 @@ import '../globals.css';
 import '../sub-pages.css';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import GoogleAnalytics from './google-analytics.astro';
 import HeaderEnhancer from './header-enhancer.astro';
 import { Header, type HeaderProps } from './header';
 import SiteFooter from './site-footer.astro';
@@ -73,6 +74,7 @@ const ldArray = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
     {ldArray.map((data) => (
       <script is:inline type="application/ld+json" set:html={JSON.stringify(data)} />
     ))}
+    <GoogleAnalytics />
   </head>
   <body class="sub-page">
     <div class="shell">
