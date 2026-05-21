@@ -65,6 +65,7 @@ function artifactProjectFile(name: string, mtime: number): ProjectFile {
 }
 
 vi.mock('../../src/i18n', () => ({
+  useI18n: () => ({ locale: 'en', t: (value: string) => value }),
   useT: () => ((value: string) => value),
 }));
 

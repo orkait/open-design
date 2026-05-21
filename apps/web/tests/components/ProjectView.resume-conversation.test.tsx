@@ -22,6 +22,7 @@ import {
 import { fetchPreviewComments } from '../../src/providers/registry';
 
 vi.mock('../../src/i18n', () => ({
+  useI18n: () => ({ locale: 'en', t: (key: string) => key }),
   useT: () => (key: string) => key,
 }));
 
