@@ -5723,15 +5723,16 @@ function HtmlViewer({
                 </button>
               </div>
               <button
-                className={`viewer-action${manualEditMode ? ' active' : ''}`}
+                className={`viewer-action viewer-action-icon${manualEditMode ? ' active' : ''}`}
                 type="button"
                 data-testid="manual-edit-mode-toggle"
-                title="Edit content"
+                data-tooltip="Edit"
+                title="Edit"
+                aria-label="Edit"
                 aria-pressed={manualEditMode}
                 onClick={activateManualEditTool}
               >
                 <RemixIcon name="edit-line" size={15} />
-                <span>Edit</span>
               </button>
               <div className="artifact-tool-menu-anchor">
                 <button
@@ -5782,11 +5783,14 @@ function HtmlViewer({
               <div className="artifact-tool-menu-anchor">
                 <button
                   type="button"
-                  className={`viewer-action artifact-tool-menu-trigger${
+                  className={`viewer-action viewer-action-icon artifact-tool-menu-trigger${
                     selectedPalette || palettePopoverOpen || inspectMode ? ' active' : ''
                   }`}
                   aria-haspopup="menu"
                   aria-expanded={manualToolsOpen}
+                  aria-label="Manual"
+                  data-tooltip="Manual"
+                  title="Manual"
                   onClick={() => {
                     setManualToolsOpen((v) => !v);
                     setAgentToolsOpen(false);
@@ -5794,8 +5798,6 @@ function HtmlViewer({
                   }}
                 >
                   <RemixIcon name="pencil-ruler-line" size={15} />
-                  <span>Manual</span>
-                  <Icon name="chevron-right" size={13} style={{ transform: 'rotate(90deg)' }} />
                   {selectedPalette ? (
                     <span
                       className="palette-tweaks-badge"
