@@ -99,8 +99,18 @@ const jsonLd = {
         </dl>
       )}
       <div class="detail-actions">
-        <a class="btn btn-primary" href={template.source} target="_blank" rel="noopener">
-          {ui.catalog.templates.forkOnGithub}
+        {/* Two CTAs matching skills/[slug]: "Use this template" routes
+            to quickstart with a slug seed; "Find on GitHub" deep-links
+            to the source folder. See skills/[slug].astro for the
+            broader rationale. */}
+        <a
+          class="btn btn-primary"
+          href={`${href('/quickstart/')}?template=${template.slug}`}
+        >
+          Use this template →
+        </a>
+        <a class="btn btn-ghost" href={template.source} target="_blank" rel="noopener">
+          Find on GitHub →
         </a>
       </div>
     </header>
@@ -113,8 +123,109 @@ const jsonLd = {
           loading="priority"
         />
         <figcaption>{ui.catalog.templates.previewCaption}</figcaption>
+        {/* Live interactive preview — the thumb above is a static
+            render; this expandable iframe loads the canonical
+            artifact on demand. Skill-template origin → example.html
+            under /skills/<slug>/; live-artifact origin → template.html
+            under /templates/<slug>/. */}
+        <details class="detail-preview-live">
+          <summary>
+            <span class="detail-preview-toggle-label">View interactive preview</span>
+            <span class="detail-preview-toggle-meta">click to expand · or open in new tab</span>
+          </summary>
+          <div class="detail-preview-frame-wrap">
+            <iframe
+              src={
+                template.origin === 'live-artifact'
+                  ? `/templates/${template.slug}/template.html`
+                  : `/skills/${template.slug}/example.html`
+              }
+              title={`${template.name} interactive preview`}
+              loading="lazy"
+              sandbox="allow-scripts allow-same-origin"
+              class="detail-preview-frame"
+            />
+            <a
+              class="detail-preview-popout"
+              href={
+                template.origin === 'live-artifact'
+                  ? `/templates/${template.slug}/template.html`
+                  : `/skills/${template.slug}/example.html`
+              }
+              target="_blank"
+              rel="noopener"
+              aria-label="Open preview in new tab"
+            >
+              Open in new tab ↗
+            </a>
+          </div>
+        </details>
       </figure>
     )}
+
+    {/* Social share row — see skills/[slug].astro for the SEO copy
+        rationale (brand keyword "open-source Claude Design alternative"
+        kept consistent across every channel). */}
+    <section class="detail-share" aria-label="Share">
+      <span class="detail-share-label">Share</span>
+      <a
+        class="detail-share-btn"
+        href={`https://www.reddit.com/submit?url=${encodeURIComponent(`https://open-design.ai/templates/${template.slug}/`)}&title=${encodeURIComponent(`${template.name} — open-source Claude Design alternative`)}`}
+        target="_blank"
+        rel="noopener"
+        aria-label="Share on Reddit"
+        title="Share on Reddit"
+      >
+        <span aria-hidden="true">R</span>
+      </a>
+      <a
+        class="detail-share-btn"
+        href={`https://x.com/intent/tweet?text=${encodeURIComponent(`I'm using ${template.name} from @opendesignai — the open-source Claude Design alternative.\n\n${template.summary}`)}&url=${encodeURIComponent(`https://open-design.ai/templates/${template.slug}/`)}`}
+        target="_blank"
+        rel="noopener"
+        aria-label="Share on X"
+        title="Share on X"
+      >
+        <span aria-hidden="true">𝕏</span>
+      </a>
+      <a
+        class="detail-share-btn"
+        href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(`https://open-design.ai/templates/${template.slug}/`)}`}
+        target="_blank"
+        rel="noopener"
+        aria-label="Share on LinkedIn"
+        title="Share on LinkedIn"
+      >
+        <span aria-hidden="true">in</span>
+      </a>
+      <a
+        class="detail-share-btn"
+        href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`https://open-design.ai/templates/${template.slug}/`)}`}
+        target="_blank"
+        rel="noopener"
+        aria-label="Share on Facebook"
+        title="Share on Facebook"
+      >
+        <span aria-hidden="true">f</span>
+      </a>
+      <a
+        class="detail-share-btn"
+        href={`mailto:?subject=${encodeURIComponent(`${template.name} — open-source Claude Design alternative`)}&body=${encodeURIComponent(`I thought you'd like this — ${template.name}, an open-source Claude Design alternative template from Open Design.\n\n${template.summary}\n\nhttps://open-design.ai/templates/${template.slug}/`)}`}
+        aria-label="Share by Email"
+        title="Share by Email"
+      >
+        <span aria-hidden="true">✉</span>
+      </a>
+      <button
+        type="button"
+        class="detail-share-btn detail-share-copy"
+        data-copy-link={`https://open-design.ai/templates/${template.slug}/`}
+        aria-label="Copy link"
+        title="Copy link"
+      >
+        <span aria-hidden="true">🔗</span>
+      </button>
+    </section>
 
     <section class="detail-block">
       <h2>{ui.catalog.templates.whatsInside}</h2>

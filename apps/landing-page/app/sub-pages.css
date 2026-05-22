@@ -1293,3 +1293,140 @@ body.sub-page {
   margin: 0;
   max-width: none;
 }
+
+
+/* =========================================================
+ * Skill / template detail page: live preview + share row
+ * =========================================================
+ *
+ * `details > summary` toggles an iframe that renders the canonical
+ * `example.html` (or `template.html` for live-artifacts). The frame
+ * is loaded lazily — click the summary, that's when the network
+ * request goes out.
+ */
+.detail-preview-live {
+  margin-top: 14px;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 14px;
+}
+.detail-preview-live > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 4px 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+  transition: color 0.16s ease;
+}
+.detail-preview-live > summary::-webkit-details-marker { display: none; }
+.detail-preview-live > summary::before {
+  content: '▸';
+  display: inline-block;
+  color: var(--coral);
+  transition: transform 0.18s ease;
+  font-family: serif;
+  font-size: 14px;
+  line-height: 1;
+}
+.detail-preview-live[open] > summary::before { transform: rotate(90deg); }
+.detail-preview-live:hover > summary { color: var(--coral); }
+.detail-preview-toggle-label { font-weight: 600; }
+.detail-preview-toggle-meta {
+  color: var(--ink-faint);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: none;
+}
+.detail-preview-frame-wrap {
+  position: relative;
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  background: var(--paper-warm);
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+}
+.detail-preview-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: white;
+}
+.detail-preview-popout {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid currentColor;
+  padding: 6px 12px;
+  border-radius: 999px;
+  text-decoration: none;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.detail-preview-popout:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/*
+ * Six-channel share row: Reddit · X · LinkedIn · Facebook · Email · Copy.
+ * Each button is a small circular pill in Atelier Zero ink-on-paper;
+ * WeChat QR was dropped per Joey's revision in favor of the YouMind-
+ * style channel set.
+ */
+.detail-share {
+  margin: 32px 0 24px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.detail-share-label {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin-right: 8px;
+}
+.detail-share-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  background: transparent;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.detail-share-btn:hover {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.detail-share-copy[data-copied] {
+  background: var(--coral);
+  color: var(--paper);
+  border-color: var(--coral);
+}
+
+@media (max-width: 720px) {
+  .detail-preview-popout { top: 8px; right: 8px; padding: 4px 10px; font-size: 9.5px; }
+}

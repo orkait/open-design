@@ -108,5 +108,32 @@
         })
         .catch(() => {});
     }
+
+    // Copy-link buttons on skill / template detail pages. Each
+    // `<button data-copy-link="...">` copies the URL via the
+    // Clipboard API and flips a `data-copied` attribute for the
+    // CSS confirmation flash. Falls back to `prompt()` so it still
+    // works on browsers without clipboard write permissions (older
+    // Safari, embedded webviews).
+    const copyButtons = document.querySelectorAll('[data-copy-link]');
+    copyButtons.forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const url = btn.getAttribute('data-copy-link') || '';
+        const flash = () => {
+          btn.setAttribute('data-copied', 'true');
+          setTimeout(() => btn.removeAttribute('data-copied'), 1400);
+        };
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(url);
+            flash();
+            return;
+          }
+        } catch {
+          // fall through to prompt fallback
+        }
+        window.prompt('Copy link', url);
+      });
+    });
   })();
 </script>
