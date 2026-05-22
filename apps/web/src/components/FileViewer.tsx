@@ -5919,7 +5919,7 @@ function HtmlViewer({
       }}
     />
   ) : null;
-  const commentComposer = boardMode && commentCreateMode && activeCommentTarget ? (
+  const commentComposer = boardMode && activeCommentTarget ? (
     <BoardComposerPopover
       target={activeCommentTarget}
       existing={visibleSideComments.find((comment) => comment.elementId === activeCommentTarget.elementId) ?? null}

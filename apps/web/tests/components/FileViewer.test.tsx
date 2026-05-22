@@ -1731,7 +1731,9 @@ describe('FileViewer tweaks toolbar', () => {
       data: { ...target, type: 'od:comment-target' },
     }));
 
-    expect(screen.queryByTestId('comment-popover-input')).toBeNull();
+    expect(await screen.findByTestId('comment-popover-input')).toBeTruthy();
+    expect(screen.getByTestId('comment-popover-save')).toBeTruthy();
+    expect(screen.getByTestId('comment-add-send')).toBeTruthy();
     await waitFor(() => {
       expect(screen.queryByTestId('annotation-hover-popover')).toBeNull();
     });
