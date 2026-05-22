@@ -1470,7 +1470,7 @@ describe('FileViewer tweaks toolbar', () => {
 
     fireEvent.click(screen.getByTestId('comment-panel-toggle'));
 
-    expect(screen.queryByTestId('comment-side-panel')).toBeNull();
+    expect(screen.getByTestId('comment-side-panel')).toBeTruthy();
     expect(screen.queryByTestId('comment-saved-marker-pin-applying')).toBeNull();
     expect(screen.queryByText('Already sent to Claude')).toBeNull();
   });
@@ -1486,7 +1486,7 @@ describe('FileViewer tweaks toolbar', () => {
     );
 
     fireEvent.click(screen.getByTestId('comment-panel-toggle'));
-    expect(screen.queryByTestId('comment-side-panel')).toBeNull();
+    expect(screen.getByTestId('comment-side-panel')).toBeTruthy();
     expect(screen.getByTestId('comment-panel-toggle').getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByTestId('board-mode-toggle').getAttribute('aria-pressed')).toBe('false');
     expect(screen.getByTestId('inspect-empty-hint-container')).toBeTruthy();
@@ -1500,7 +1500,7 @@ describe('FileViewer tweaks toolbar', () => {
 
     fireEvent.click(screen.getByTestId('comment-panel-toggle'));
 
-    expect(screen.queryByTestId('comment-side-panel')).toBeNull();
+    expect(screen.getByTestId('comment-side-panel')).toBeTruthy();
     expect(screen.getByTestId('comment-panel-toggle').getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByTestId('board-mode-toggle').getAttribute('aria-pressed')).toBe('false');
     expect(screen.getByTestId('inspect-empty-hint-container')).toBeTruthy();
@@ -1547,9 +1547,17 @@ describe('FileViewer tweaks toolbar', () => {
 
     fireEvent.click(screen.getByTestId('comment-panel-toggle'));
 
-    expect(screen.queryByTestId('comment-side-panel')).toBeNull();
+    expect(screen.getByTestId('comment-side-panel')).toBeTruthy();
     expect(screen.getByTestId('comment-saved-marker-pin-newer').textContent).toBe('C');
     expect(screen.getByTestId('comment-saved-marker-pin-older').textContent).toBe('C');
+
+    clickAgentTool('board-mode-toggle');
+
+    expect(screen.queryByTestId('comment-side-panel')).toBeNull();
+    expect(screen.queryByTestId('comment-saved-marker-pin-newer')).toBeNull();
+    expect(screen.queryByTestId('comment-saved-marker-pin-older')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('comment-panel-toggle'));
 
     const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
     window.dispatchEvent(new MessageEvent('message', {

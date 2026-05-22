@@ -5611,12 +5611,14 @@ function HtmlViewer({
     if (boardMode && commentCreateMode) {
       setBoardMode(false);
       setCommentCreateMode(false);
+      setCommentPanelOpen(false);
       clearBoardComposer();
       closeArtifactToolMenus();
       return;
     }
     const activateCommentCreate = () => {
-      setCommentPanelOpen(false);
+      setCommentPanelOpen(true);
+      setCommentSidePanelCollapsed(false);
       setCommentCreateMode(true);
       clearBoardComposer();
       setInspectMode(false);
@@ -5948,7 +5950,7 @@ function HtmlViewer({
       sending={sendingBoardBatch || streaming}
       t={t}
       scale={overlayPreviewScale}
-      docked={Boolean(commentPortalHost)}
+      docked={false}
     />
   ) : null;
   const commentSidePanel = commentPanelOpen ? (
@@ -5995,6 +5997,10 @@ function HtmlViewer({
         setActivePreviewCommentId(comment.id);
         setCommentDraft(comment.note);
         setQueuedBoardNotes([]);
+        setBoardMode(true);
+        setCommentCreateMode(true);
+        setCommentPanelOpen(true);
+        setCommentSidePanelCollapsed(false);
       }}
       onSendSelected={async () => {
         if (!onSendBoardCommentAttachments) return;
@@ -6679,7 +6685,7 @@ function HtmlViewer({
             </div>
             {(boardMode || drawClickSelectionMode) ? (
               <CommentPreviewOverlays
-                comments={boardMode ? visibleSideComments : []}
+                comments={commentCreateMode ? visibleSideComments : []}
                 liveTargets={liveCommentTargets}
                 hoveredTarget={hoveredCommentTarget}
                 hoveredPodMemberId={hoveredPodMemberId}
@@ -6715,7 +6721,7 @@ function HtmlViewer({
                 />
               </div>
             ) : null}
-            {!commentPortalHost ? commentComposer : null}
+            {commentComposer}
             {boardMode && !commentCreateMode && hoveredCommentTarget && (!activeCommentTarget || commentPortalHost) ? (
               <AnnotationHoverPopover target={hoveredCommentTarget} scale={overlayPreviewScale} />
             ) : null}
