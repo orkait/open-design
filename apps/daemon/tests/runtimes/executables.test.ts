@@ -30,24 +30,22 @@ test('claude entry declares openclaude as a fallback bin (issue #235)', () => {
 // declarative `fallbackBins`-on-claude assertion above still runs on
 // every platform and is what catches regressions in the AGENT_DEF.
 fsTest(
-  'resolveAgentExecutable uses packaged built-in Vela for AMR when OpenCode is configured',
+  'resolveAgentExecutable uses packaged built-in Vela for AMR with the bundled OpenCode companion tree',
   () => {
     const root = mkdtempSync(join(tmpdir(), 'od-amr-built-in-'));
     try {
       return withEnvSnapshot(['PATH', 'OD_AGENT_HOME', 'OD_RESOURCE_ROOT', 'VELA_OPENCODE_BIN'], () => {
         const resourceRoot = join(root, 'resources', 'open-design');
         const builtInVela = join(resourceRoot, 'bin', 'vela');
-        const opencodeBin = join(root, 'bin', 'opencode');
+        const companionTree = join(resourceRoot, 'bin', 'libexec', 'opencode');
         mkdirSync(join(resourceRoot, 'bin'), { recursive: true });
-        mkdirSync(join(root, 'bin'), { recursive: true });
+        mkdirSync(companionTree, { recursive: true });
         writeFileSync(builtInVela, '#!/bin/sh\nexit 0\n');
-        writeFileSync(opencodeBin, '#!/bin/sh\nexit 0\n');
         chmodSync(builtInVela, 0o755);
-        chmodSync(opencodeBin, 0o755);
         process.env.PATH = '';
         process.env.OD_AGENT_HOME = join(root, 'empty-home');
         process.env.OD_RESOURCE_ROOT = resourceRoot;
-        process.env.VELA_OPENCODE_BIN = opencodeBin;
+        delete process.env.VELA_OPENCODE_BIN;
 
         const resolved = resolveAgentExecutable(minimalAgentDef({ id: 'amr', bin: 'vela' }));
 

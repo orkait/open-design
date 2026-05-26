@@ -141,16 +141,28 @@ export function resolveAmrOpenCodeExecutable(
   return resolveOnPath('opencode-cli') ?? resolveOnPath('opencode');
 }
 
+function packagedVelaOpenCodeCompanionTree(resourceRoot: string): string | null {
+  const candidate = path.join(resourceRoot, 'bin', 'libexec', 'opencode');
+  try {
+    return statSync(candidate).isDirectory() ? candidate : null;
+  } catch {
+    return null;
+  }
+}
+
 function packagedBuiltInExecutable(
   def: RuntimeAgentDef,
   configuredEnv: Record<string, string> = {},
 ): string | null {
   if (def.id !== 'amr') return null;
-  if (!resolveAmrOpenCodeExecutable({ ...process.env, ...configuredEnv })) {
-    return null;
-  }
   const resourceRoot = process.env.OD_RESOURCE_ROOT?.trim();
   if (!resourceRoot) return null;
+  if (
+    !resolveAmrOpenCodeExecutable({ ...process.env, ...configuredEnv }) &&
+    !packagedVelaOpenCodeCompanionTree(resourceRoot)
+  ) {
+    return null;
+  }
   const candidate = path.join(
     resourceRoot,
     'bin',

@@ -120,17 +120,15 @@ fsTest('resolveAgentLaunch uses packaged built-in Vela for AMR and prepends its 
       const resourceRoot = join(root, 'resources', 'open-design');
       const builtInDir = join(resourceRoot, 'bin');
       const builtInVela = join(builtInDir, 'vela');
-      const opencodeBin = join(root, 'bin', 'opencode');
+      const companionTree = join(builtInDir, 'libexec', 'opencode');
       mkdirSync(builtInDir, { recursive: true });
-      mkdirSync(join(root, 'bin'), { recursive: true });
+      mkdirSync(companionTree, { recursive: true });
       writeFileSync(builtInVela, '#!/bin/sh\nexit 0\n');
-      writeFileSync(opencodeBin, '#!/bin/sh\nexit 0\n');
       chmodSync(builtInVela, 0o755);
-      chmodSync(opencodeBin, 0o755);
       process.env.PATH = '';
       process.env.OD_AGENT_HOME = join(root, 'empty-home');
       process.env.OD_RESOURCE_ROOT = resourceRoot;
-      process.env.VELA_OPENCODE_BIN = opencodeBin;
+      delete process.env.VELA_OPENCODE_BIN;
 
       const launch = resolveAgentLaunch(minimalAgentDef({ id: 'amr', bin: 'vela' }));
 
