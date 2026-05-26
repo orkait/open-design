@@ -148,7 +148,8 @@ jobs:
             gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" -f body="$body" --silent
           fi
 
-          case "${PR_AUTHOR,,}" in
+          pr_author_lc="$(printf '%s' "$PR_AUTHOR" | tr '[:upper:]' '[:lower:]')"
+          case "$pr_author_lc" in
             nettee|mrcfps|alchemistklk|siri-ray)
               ;;
             *)

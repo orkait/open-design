@@ -1171,6 +1171,8 @@ This PR does not touch a path that the browser explorer can map to app UI/runtim
 - None from this PR diff. Add deterministic checks when a future PR changes app/runtime behavior.
 REPORT
   echo "No app/runtime surface touched; wrote inconclusive advisory report to $artifacts/expect.log"
+  record_playwright_artifacts || true
+  publish_trace_artifacts_to_r2 || true
   write_agent_report_artifact
   docker logs "$container_name" > "$artifacts/docker.log" 2>&1 || true
   exit 0
