@@ -28,6 +28,8 @@ type OnInvalidStyle = (id: string, keys: Array<keyof ManualEditStyles>) => void;
 type OnApplyPatch = (patch: ManualEditPatch, label: string) => void;
 type OnError = (message: string) => void;
 type OnClearSelection = () => void;
+type OnSaveDraft = () => void;
+type OnCancelDraft = () => void;
 
 describe('ManualEditPanel', () => {
   let dom: JSDOM;
@@ -103,12 +105,32 @@ describe('ManualEditPanel', () => {
 
     const scrollRegion = host.querySelector('.manual-edit-scroll');
     const footer = host.querySelector('.manual-edit-footer');
-    const deleteButton = Array.from(host.querySelectorAll('button'))
-      .find((button) => button.textContent === 'Delete element');
+    const deleteButton = host.querySelector('button[aria-label="Delete element"]');
 
     expect(scrollRegion?.textContent).toContain('TYPOGRAPHY');
-    expect(scrollRegion?.contains(deleteButton ?? null)).toBe(false);
-    expect(footer?.contains(deleteButton ?? null)).toBe(true);
+    expect(scrollRegion?.contains(deleteButton)).toBe(false);
+    expect(footer?.contains(deleteButton)).toBe(true);
+    expect(footer?.textContent).toContain('Cancel');
+    expect(footer?.textContent).toContain('Save');
+  });
+
+  it('routes footer cancel and save actions', () => {
+    const onCancelDraft = vi.fn<OnCancelDraft>();
+    const onSaveDraft = vi.fn<OnSaveDraft>();
+    renderPanel({ onCancelDraft, onSaveDraft });
+
+    const footerButtons = Array.from(host.querySelectorAll('.manual-edit-footer button'));
+    const cancel = footerButtons.find((button) => button.textContent === 'Cancel') as HTMLButtonElement | undefined;
+    const save = footerButtons.find((button) => button.textContent === 'Save') as HTMLButtonElement | undefined;
+    if (!cancel || !save) throw new Error('Footer action buttons not found');
+
+    act(() => {
+      cancel.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+      save.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(onCancelDraft).toHaveBeenCalledTimes(1);
+    expect(onSaveDraft).toHaveBeenCalledTimes(1);
   });
 
   it('normalizes font stacks and writes a usable font-family value', () => {
@@ -476,6 +498,8 @@ describe('ManualEditPanel', () => {
     onStyleChange = vi.fn<OnStyleChange>(),
     onInvalidStyle = vi.fn<OnInvalidStyle>(),
     onClearSelection = vi.fn<OnClearSelection>(),
+    onCancelDraft = vi.fn<OnCancelDraft>(),
+    onSaveDraft = vi.fn<OnSaveDraft>(),
     attributesText = '{}',
     selectedTarget = target,
     styles = emptyManualEditStyles(),
@@ -489,6 +513,8 @@ describe('ManualEditPanel', () => {
     onStyleChange?: OnStyleChange;
     onInvalidStyle?: OnInvalidStyle;
     onClearSelection?: OnClearSelection;
+    onCancelDraft?: OnCancelDraft;
+    onSaveDraft?: OnSaveDraft;
     attributesText?: string;
     selectedTarget?: ManualEditTarget | null;
     styles?: ReturnType<typeof emptyManualEditStyles>;
@@ -521,7 +547,8 @@ describe('ManualEditPanel', () => {
           onApplyPatch={onApplyPatch}
           onError={onError}
           onClearSelection={onClearSelection}
-          onCancelDraft={vi.fn<() => void>()}
+          onCancelDraft={onCancelDraft}
+          onSaveDraft={onSaveDraft}
           onUndo={vi.fn<() => void>()}
           onRedo={vi.fn<() => void>()}
           floatingStyle={floatingStyle}

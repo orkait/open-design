@@ -20,6 +20,12 @@
 }
 .viewer-toolbar-left { display: inline-flex; align-items: center; gap: 8px; }
 .viewer-toolbar-actions { display: inline-flex; gap: 2px; align-items: center; }
+.viewer-toolbar-tool-divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 5px;
+  background: var(--border);
+}
 .viewer-toolbar .icon-only,
 .viewer-toolbar-actions .icon-only {
   width: 28px;

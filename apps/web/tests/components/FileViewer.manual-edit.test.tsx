@@ -190,11 +190,13 @@ describe('FileViewer manual edit regressions', () => {
     });
 
     fireEvent.change(baseSizeInput, { target: { value: '18' } });
+    fireEvent.click(screen.getByText('Save'));
     await waitFor(() => {
       expect(screen.getByText(/Could not save the edited file/)).toBeTruthy();
     });
 
     fireEvent.change(baseSizeInput, { target: { value: '19' } });
+    fireEvent.click(screen.getByText('Save'));
     await waitFor(() => {
       expect(screen.queryByText(/Could not save the edited file/)).toBeNull();
     });

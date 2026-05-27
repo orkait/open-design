@@ -27,11 +27,14 @@ export function ManualEditPanel({
   draft,
   error,
   canUndo,
+  busy,
   onDraftChange,
   onStyleChange,
   onInvalidStyle,
   onError,
   onClearSelection,
+  onCancelDraft,
+  onSaveDraft,
   onExit,
   onApplyPatch,
   onPickImage,
@@ -60,6 +63,7 @@ export function ManualEditPanel({
   onClearSelection: () => void;
   onExit?: () => void;
   onCancelDraft: () => void;
+  onSaveDraft: () => void;
   onUndo: () => void;
   onRedo: () => void;
 }) {
@@ -223,15 +227,16 @@ export function ManualEditPanel({
         </div>
 
         <div className="manual-edit-footer">
-          {targetForInspector ? (
-            <div className="cc-section">
-              <div className="cc-section-body">
-                {confirmDelete ? (
-                  <>
-                    <p className="cc-delete-confirm">{canUndo ? t('manualEdit.deleteElementConfirm') : t('manualEdit.deleteElement')}</p>
+          <div className="manual-edit-footer-actions">
+            <div className="manual-edit-footer-left">
+              {targetForInspector ? (
+                confirmDelete ? (
+                  <div className="manual-edit-delete-confirm">
+                    <span>{canUndo ? t('manualEdit.deleteElementConfirm') : t('manualEdit.deleteElement')}</span>
                     <button
                       type="button"
-                      className="cc-action-btn cc-action-danger"
+                      className="manual-edit-footer-btn danger"
+                      disabled={busy}
                       onClick={() => {
                         setConfirmDelete(false);
                         onApplyPatch(
@@ -244,24 +249,46 @@ export function ManualEditPanel({
                     </button>
                     <button
                       type="button"
-                      className="cc-action-btn"
+                      className="manual-edit-footer-btn subtle"
+                      disabled={busy}
                       onClick={() => setConfirmDelete(false)}
                     >
                       {t('common.cancel')}
                     </button>
-                  </>
+                  </div>
                 ) : (
                   <button
                     type="button"
-                    className="cc-action-btn cc-action-danger"
+                    className="manual-edit-delete-btn"
+                    aria-label={t('manualEdit.deleteElement')}
+                    title={t('manualEdit.deleteElement')}
+                    disabled={busy}
                     onClick={() => setConfirmDelete(true)}
                   >
-                    {t('manualEdit.deleteElement')}
+                    <Icon name="trash" size={15} />
                   </button>
-                )}
-              </div>
+                )
+              ) : null}
             </div>
-          ) : null}
+            <div className="manual-edit-footer-right">
+              <button
+                type="button"
+                className="manual-edit-footer-btn subtle"
+                disabled={busy}
+                onClick={onCancelDraft}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                className="manual-edit-footer-btn primary"
+                disabled={busy}
+                onClick={onSaveDraft}
+              >
+                {t('common.save')}
+              </button>
+            </div>
+          </div>
 
           {error ? <div className="manual-edit-error">{error}</div> : null}
         </div>

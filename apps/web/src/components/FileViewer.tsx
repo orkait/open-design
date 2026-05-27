@@ -5088,14 +5088,6 @@ const [manualEditTargets, setManualEditTargets] = useState<ManualEditTarget[]>([
     setManualEditError('Saved styles differed from the active preview. Reconciled the selected target from source.');
   }
 
-  function scheduleManualEditStyleSave() {
-    if (manualEditStyleTimerRef.current) clearTimeout(manualEditStyleTimerRef.current);
-    manualEditStyleTimerRef.current = setTimeout(() => {
-      manualEditStyleTimerRef.current = null;
-      void flushManualEditStyleSave();
-    }, 1000);
-  }
-
   function clearManualEditStyleTimer() {
     if (!manualEditStyleTimerRef.current) return;
     clearTimeout(manualEditStyleTimerRef.current);
@@ -5122,18 +5114,43 @@ const [manualEditTargets, setManualEditTargets] = useState<ManualEditTarget[]>([
     manualEditPendingStyleRef.current = pending;
     setManualEditError(null);
     previewStyleToIframe(id, styles, version);
-    scheduleManualEditStyleSave();
   }
 
   async function flushManualEditStyleSave(): Promise<boolean> {
     const pending = manualEditPendingStyleRef.current;
     if (!pending) return true;
-    if (manualEditSavingRef.current) {
-      scheduleManualEditStyleSave();
-      return false;
-    }
+    if (manualEditSavingRef.current) return false;
     manualEditPendingStyleRef.current = null;
     return applyManualEdit({ id: pending.id, kind: 'set-style', styles: pending.styles }, pending.label);
+  }
+
+  function cancelManualEditStyleDraft() {
+    const pending = manualEditPendingStyleRef.current;
+    if (!pending) return;
+    clearManualEditStyleTimer();
+    manualEditPendingStyleRef.current = null;
+    const base = sourceRef.current ?? '';
+    const target = pending.id === '__body__'
+      ? null
+      : selectedManualEditTarget?.id === pending.id
+        ? selectedManualEditTarget
+        : manualEditTargets.find((item) => item.id === pending.id) ?? null;
+    const sourceStyles = target
+      ? inspectorManualEditStyles(target, base)
+      : readManualEditStyles(base, pending.id);
+    const resetStyles = MANUAL_EDIT_STYLE_PROPS.reduce<Partial<ManualEditStyles>>((acc, key) => {
+      acc[key] = sourceStyles[key] ?? '';
+      return acc;
+    }, {});
+    previewStyleToIframe(pending.id, resetStyles, nextManualEditPreviewVersion());
+    if (!target || target.id === selectedManualEditTarget?.id) {
+      setManualEditDraft((current) => ({
+        ...current,
+        styles: target ? sourceStyles : current.styles,
+        fullSource: base,
+      }));
+    }
+    setManualEditError(null);
   }
 
   async function exitManualEditModeAfterFlush(): Promise<boolean> {
@@ -5145,7 +5162,7 @@ const [manualEditTargets, setManualEditTargets] = useState<ManualEditTarget[]>([
   }
 
   async function selectManualEditTarget(target: ManualEditTarget) {
-    if (!(await flushManualEditStyleSave())) return;
+    if (manualEditPendingStyleRef.current?.id !== target.id) cancelManualEditStyleDraft();
     const base = sourceRef.current ?? '';
     const fields = readManualEditFields(base, target.id);
     setSelectedManualEditTarget(target);
@@ -5163,7 +5180,7 @@ const [manualEditTargets, setManualEditTargets] = useState<ManualEditTarget[]>([
   }
 
   async function clearManualEditTargetSelection() {
-    if (!(await flushManualEditStyleSave())) return;
+    cancelManualEditStyleDraft();
     setSelectedManualEditTarget(null);
     setManualEditPanelPosition(null);
     setManualEditDraft(emptyManualEditDraft(sourceRef.current ?? ''));
@@ -5239,7 +5256,6 @@ const [manualEditTargets, setManualEditTargets] = useState<ManualEditTarget[]>([
     } finally {
       manualEditSavingRef.current = false;
       setManualEditSaving(false);
-      if (manualEditPendingStyleRef.current) scheduleManualEditStyleSave();
     }
   }
 
@@ -6237,7 +6253,10 @@ const [manualEditTargets, setManualEditTargets] = useState<ManualEditTarget[]>([
         void exitManualEditModeAfterFlush();
       }}
       onCancelDraft={() => {
-        if (selectedManualEditTarget) selectManualEditTarget(selectedManualEditTarget);
+        cancelManualEditStyleDraft();
+      }}
+      onSaveDraft={() => {
+        void flushManualEditStyleSave();
       }}
       onUndo={() => {
         void undoManualEdit();
@@ -6442,34 +6461,6 @@ const [manualEditTargets, setManualEditTargets] = useState<ManualEditTarget[]>([
         <div className="viewer-toolbar-actions">
           {showPreviewToolbarControls ? (
             <>
-              <div className="artifact-tool-menu-anchor">
-                <button
-                  type="button"
-                  className={`viewer-action viewer-action-icon viewer-comment-toggle${boardMode && !commentCreateMode && boardTool === 'inspect' ? ' active' : ''}`}
-                  data-testid="board-mode-toggle"
-                  data-tooltip={t('fileViewer.comment')}
-                  title={t('fileViewer.comment')}
-                  aria-label={t('fileViewer.comment')}
-                  aria-pressed={boardMode && !commentCreateMode && boardTool === 'inspect'}
-                  onClick={activateCommentTool}
-                >
-                  <RemixIcon name="chat-new-line" size={15} />
-                  {boardMode && !commentCreateMode && boardTool === 'inspect' ? <span className="viewer-action-active-dot" aria-hidden /> : null}
-                </button>
-              </div>
-              <button
-                type="button"
-                className={`viewer-action viewer-action-icon viewer-comment-toggle${boardMode && commentCreateMode ? ' active' : ''}`}
-                data-testid="comment-panel-toggle"
-                data-tooltip={t('chat.tabComments')}
-                title={t('chat.tabComments')}
-                aria-label={t('chat.tabComments')}
-                aria-pressed={boardMode && commentCreateMode}
-                onClick={activateCommentCreateTool}
-              >
-                <RemixIcon name="message-3-line" size={15} />
-                {boardMode && commentCreateMode ? <span className="viewer-action-active-dot" aria-hidden /> : null}
-              </button>
               <button
                 className={`viewer-action viewer-action-icon${manualEditMode ? ' active' : ''}`}
                 type="button"
@@ -6505,6 +6496,35 @@ const [manualEditTargets, setManualEditTargets] = useState<ManualEditTarget[]>([
                 onClick={activateScreenshotTool}
               >
                 <RemixIcon name="screenshot-2-line" size={15} />
+              </button>
+              <span className="viewer-toolbar-tool-divider" aria-hidden />
+              <div className="artifact-tool-menu-anchor">
+                <button
+                  type="button"
+                  className={`viewer-action viewer-action-icon viewer-comment-toggle${boardMode && !commentCreateMode && boardTool === 'inspect' ? ' active' : ''}`}
+                  data-testid="board-mode-toggle"
+                  data-tooltip={t('fileViewer.comment')}
+                  title={t('fileViewer.comment')}
+                  aria-label={t('fileViewer.comment')}
+                  aria-pressed={boardMode && !commentCreateMode && boardTool === 'inspect'}
+                  onClick={activateCommentTool}
+                >
+                  <RemixIcon name="chat-new-line" size={15} />
+                  {boardMode && !commentCreateMode && boardTool === 'inspect' ? <span className="viewer-action-active-dot" aria-hidden /> : null}
+                </button>
+              </div>
+              <button
+                type="button"
+                className={`viewer-action viewer-action-icon viewer-comment-toggle${boardMode && commentCreateMode ? ' active' : ''}`}
+                data-testid="comment-panel-toggle"
+                data-tooltip={t('chat.tabComments')}
+                title={t('chat.tabComments')}
+                aria-label={t('chat.tabComments')}
+                aria-pressed={boardMode && commentCreateMode}
+                onClick={activateCommentCreateTool}
+              >
+                <RemixIcon name="message-3-line" size={15} />
+                {boardMode && commentCreateMode ? <span className="viewer-action-active-dot" aria-hidden /> : null}
               </button>
               {source !== null && mode === 'preview' ? (
                 <div className="zoom-menu viewer-toolbar-zoom" ref={zoomMenuRef}>
