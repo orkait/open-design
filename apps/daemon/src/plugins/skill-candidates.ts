@@ -143,11 +143,12 @@ export function getSkillPluginCandidate(db: SqliteDb, id: string): SkillPluginCa
 }
 
 export function dismissSkillPluginCandidate(db: SqliteDb, projectId: string, id: string, now = Date.now()): SkillPluginCandidate | null {
-  db.prepare(
+  const result = db.prepare(
     `UPDATE skill_plugin_candidates
         SET status = 'dismissed', dismissed_at = ?, updated_at = ?
       WHERE project_id = ? AND id = ?`,
   ).run(now, now, projectId, id);
+  if (result.changes === 0) return null;
   return getSkillPluginCandidate(db, id);
 }
 
@@ -263,7 +264,7 @@ function referencedPluginUrls(message: string): string[] {
   const re = /https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\/[^\s)'"`<>]*)?/gu;
   for (const match of message.matchAll(re)) {
     const url = match[0];
-    if (/\/(SKILL\.md|open-design\.json)(?:$|[?#])/u.test(url) || !/\/issues\//u.test(url)) out.add(url);
+    if (isExplicitSkillPluginUrl(url)) out.add(url);
   }
   return Array.from(out);
 }
@@ -289,7 +290,7 @@ async function readCandidateFile(projectRoot: string, rel: string): Promise<Skil
 }
 
 function isEligibleSourceRef(ref: SkillPluginCandidateSourceRef): boolean {
-  if (ref.kind === 'url') return true;
+  if (ref.kind === 'url') return isExplicitSkillPluginUrl(ref.value);
   if (path.basename(ref.value) === 'SKILL.md') return true;
   const content = ref.content ?? '';
   if (!content) return false;
@@ -297,6 +298,17 @@ function isEligibleSourceRef(ref: SkillPluginCandidateSourceRef): boolean {
     || /\b(skill|agent skill|reusable workflow|use this skill)\b/iu.test(content);
   const hasSubstance = content.trim().length >= 160;
   return hasSkillSignal && hasSubstance;
+}
+
+function isExplicitSkillPluginUrl(value: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  if (url.hostname !== 'github.com') return false;
+  return /\/(?:SKILL\.md|open-design\.json)$/u.test(decodeURIComponent(url.pathname));
 }
 
 function deriveCandidateTitle(ref: SkillPluginCandidateSourceRef): string {

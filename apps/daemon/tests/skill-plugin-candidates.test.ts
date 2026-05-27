@@ -103,6 +103,27 @@ describe('skill plugin candidates', () => {
     expect(detected).toBeNull();
   });
 
+  it('only detects GitHub URLs that point at explicit skill artifacts', async () => {
+    await expect(detectSkillPluginCandidate({
+      projectId: 'proj_1',
+      message: 'Look at https://github.com/foo/bar for context.',
+      projectRoot,
+    })).resolves.toBeNull();
+
+    await expect(detectSkillPluginCandidate({
+      projectId: 'proj_1',
+      message: 'The implementation is discussed at https://github.com/foo/bar/pull/123.',
+      projectRoot,
+    })).resolves.toBeNull();
+
+    const detected = await detectSkillPluginCandidate({
+      projectId: 'proj_1',
+      message: 'Use https://github.com/foo/bar/blob/main/SKILL.md for this run.',
+      projectRoot,
+    });
+    expect(detected?.sourceRefs[0]?.value).toBe('https://github.com/foo/bar/blob/main/SKILL.md');
+  });
+
   it('dismisses only the matching project candidate', async () => {
     const db = openDatabase(tmpDir, { dataDir: path.join(tmpDir, 'data') });
     for (const id of ['proj_1', 'proj_2']) {
@@ -136,6 +157,56 @@ describe('skill plugin candidates', () => {
     expect(listSkillPluginCandidates(db, 'proj_1')).toHaveLength(0);
     expect(listSkillPluginCandidates(db, 'proj_2')).toHaveLength(1);
     expect(listSkillPluginCandidates(db, 'proj_1', true)[0]?.status).toBe('dismissed');
+  });
+
+  it('does not dismiss or expose a candidate from another project', () => {
+    const db = openDatabase(tmpDir, { dataDir: path.join(tmpDir, 'data') });
+    for (const id of ['proj_1', 'proj_2']) {
+      insertProject(db, {
+        id,
+        name: id,
+        skillId: null,
+        designSystemId: null,
+        pendingPrompt: null,
+        metadata: { kind: 'prototype' },
+        createdAt: 1,
+        updatedAt: 1,
+      });
+    }
+    insertConversation(db, {
+      id: 'conv_1',
+      projectId: 'proj_1',
+      title: 'Candidate conversation',
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    upsertMessage(db, 'conv_1', {
+      id: 'assistant_card_1',
+      role: 'assistant',
+      content: 'plugin candidate',
+      createdAt: 1,
+      endedAt: 1,
+    });
+    const candidate = insertSkillPluginCandidate(db, {
+      projectId: 'proj_1',
+      runId: null,
+      conversationId: 'conv_1',
+      assistantMessageId: 'assistant_card_1',
+      title: 'Reusable Skill',
+      description: 'A reusable skill.',
+      confidence: 0.9,
+      sourceRefs: [{ kind: 'file', value: 'SKILL.md' }],
+      provenance: { summary: 'test', detectedAt: 1 },
+      fingerprint: 'fingerprint_1',
+      draftPath: null,
+    })!;
+
+    const dismissed = dismissSkillPluginCandidate(db, 'proj_2', candidate.id, 30);
+
+    expect(dismissed).toBeNull();
+    expect(listSkillPluginCandidates(db, 'proj_1')).toHaveLength(1);
+    expect(listSkillPluginCandidates(db, 'proj_1', true)[0]?.status).toBe('active');
+    expect(listMessages(db, 'conv_1').map((message) => message.id)).toContain('assistant_card_1');
   });
 
   it('reuses and reanchors an existing candidate assistant message', () => {
