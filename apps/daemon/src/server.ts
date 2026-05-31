@@ -8485,6 +8485,18 @@ export async function startServer({
       }
     }
 
+    // Single choke point for emitting an agent event to the client. EVERY
+    // stream handler (sendAgentEvent, the Claude callback, Copilot, ACP, …)
+    // emits through here, never via a bare send('agent', …), so the tool-loop
+    // guard sees every runtime's tool activity and no handler can drift out of
+    // coverage. observe runs AFTER the send so a `tool_loop` warning/halt
+    // follows the result that triggered it in the stream. (PR #3375 review:
+    // Copilot and ACP bypassed the guard by calling send('agent', …) directly.)
+    function emitAgentEvent(ev: any) {
+      send('agent', ev);
+      observeToolEventForLoop(ev);
+    }
+
     const sendAgentEvent = (ev) => {
       if (ev?.type === 'error') {
         if (agentStreamError) return;
@@ -8542,8 +8554,7 @@ export async function startServer({
       if (ev?.type && SUBSTANTIVE_AGENT_EVENT_TYPES.has(ev.type)) {
         agentProducedOutput = true;
       }
-      observeToolEventForLoop(ev);
-      send('agent', ev);
+      emitAgentEvent(ev);
     };
     const parseBufferedAntigravityGeminiJsonEventStream = () => {
       if (
@@ -8612,13 +8623,12 @@ export async function startServer({
           const visibleDelta = titleMarkerStripper.strip(ev.delta);
           if (visibleDelta) {
             noteFirstTokenAt();
-            send('agent', { ...ev, delta: visibleDelta });
+            emitAgentEvent({ ...ev, delta: visibleDelta });
           }
           return;
         }
         noteFirstTokenFromAgentEvent(ev);
-        send('agent', ev);
-        observeToolEventForLoop(ev);
+        emitAgentEvent(ev);
         // Claude uses per-message guards (claude-stream.ts) rather than the
         // run-scoped guard above, so its `fabricated_role_marker` events
         // surface here directly from the stream handler, not via
@@ -8658,7 +8668,7 @@ export async function startServer({
           return;
         }
         noteFirstTokenFromAgentEvent(ev);
-        send('agent', ev);
+        emitAgentEvent(ev);
       });
       child.stdout.on('data', (chunk) => copilot.feed(chunk));
       child.on('close', () => copilot.flush());
@@ -8754,7 +8764,12 @@ export async function startServer({
             return;
           }
           if (event === 'agent') noteFirstTokenFromAgentEvent(data);
-          send(event, data);
+          if (event === 'agent') {
+            noteFirstTokenFromAgentEvent(data);
+            emitAgentEvent(data);
+          } else {
+            send(event, data);
+          }
         },
         ...(acpStageTimeoutMs !== undefined ? { stageTimeoutMs: acpStageTimeoutMs } : {}),
       });

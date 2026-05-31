@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createClaudeStreamHandler } from '../../src/runtimes/claude-stream.js';
 import { createCopilotStreamHandler } from '../../src/copilot-stream.js';
 import { mapPiRpcEvent } from '../../src/pi-rpc.js';
+import { createToolLoopGuard } from '../../src/tool-loop-guard.js';
 
 describe('structured agent stream fixtures', () => {
   it('emits TodoWrite tool_use from Claude Code stream JSON', () => {
@@ -995,5 +996,30 @@ describe('structured agent stream fixtures', () => {
       stopReason: 'completed',
       durationMs: 1234,
     });
+  });
+
+  it('routes GitHub Copilot failing tool executions through the tool-loop guard', () => {
+    const guard = createToolLoopGuard();
+    const handler = createCopilotStreamHandler((event: any) => {
+      if (event?.type === 'tool_use' && typeof event.id === 'string') {
+        guard.observeToolUse(event.id, event.name ?? 'tool', event.input);
+      } else if (event?.type === 'tool_result' && typeof event.toolUseId === 'string') {
+        guard.observeToolResult(event.toolUseId, Boolean(event.isError), event.content ?? '');
+      }
+    });
+
+    for (let i = 0; i < 8; i += 1) {
+      handler.feed(`${JSON.stringify({
+        type: 'tool.execution_start',
+        data: { toolCallId: `call-${i}`, toolName: 'Bash', arguments: { command: 'verify.sh' } },
+      })}\n`);
+      handler.feed(`${JSON.stringify({
+        type: 'tool.execution_complete',
+        data: { toolCallId: `call-${i}`, success: false, result: 'exit 1' },
+      })}\n`);
+    }
+    handler.flush();
+
+    expect(guard.halted).toBe(true);
   });
 });
