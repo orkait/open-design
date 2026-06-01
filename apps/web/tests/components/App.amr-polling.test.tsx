@@ -191,4 +191,34 @@ describe('App AMR polling', () => {
     }, { timeout: 4_000 });
     expect(mockedFetchAmrModels).toHaveBeenCalledTimes(3);
   });
+
+  it('stops polling after the remote refresh reports a preset-side error', { timeout: 10_000 }, async () => {
+    mockedFetchAmrModels.mockReset();
+    mockedFetchAmrModels
+      .mockResolvedValueOnce({
+        source: 'preset',
+        refreshing: true,
+        models: [{ id: 'preset-a', label: 'preset-a' }],
+      })
+      .mockResolvedValueOnce({
+        source: 'preset',
+        refreshing: true,
+        remoteError: 'remote unavailable',
+        models: [{ id: 'preset-a', label: 'preset-a' }],
+      });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mockedFetchAmrModels).toHaveBeenCalledTimes(1);
+    });
+
+    await waitFor(() => {
+      expect(mockedFetchAmrModels).toHaveBeenCalledTimes(2);
+    }, { timeout: 4_000 });
+
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+
+    expect(mockedFetchAmrModels).toHaveBeenCalledTimes(2);
+  });
 });

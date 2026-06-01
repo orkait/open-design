@@ -388,6 +388,8 @@ function AppInner() {
     let cancelled = false;
     let timer: number | null = null;
     const pollDelayMs = 1_000;
+    const maxPresetPolls = 10;
+    let presetPolls = 0;
 
     const applyAmrModels = async () => {
       const result = await fetchAmrModels();
@@ -397,7 +399,12 @@ function AppInner() {
           ? { ...agent, models: result.models, modelsSource: 'live' }
           : agent,
       ));
-      if (result.source === 'preset' || result.refreshing) {
+      const shouldPollPreset =
+        result.source === 'preset' &&
+        !result.remoteError &&
+        presetPolls < maxPresetPolls;
+      if (shouldPollPreset) {
+        presetPolls += 1;
         timer = window.setTimeout(() => {
           void applyAmrModels();
         }, pollDelayMs);
