@@ -469,6 +469,7 @@ async function runUpgradeInstallerAcceptance(options: {
   const entry = matchingEntries[0];
   if (entry == null) throw new Error(`expected one registry entry for ${installIdentity.displayName}`);
   expect(entry.keyPath).toContain(`Open Design-${installIdentity.namespaceToken}`);
+  await seedPackagedOnboardingComplete(options.installDir);
   await options.startDesktop('start after real update install');
   await waitForHealthyDesktop();
   return {
