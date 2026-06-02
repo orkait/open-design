@@ -5,7 +5,7 @@
 > 🏅 **Das Open Design Fellow-Programm ist jetzt offen.** Wenn auch du glaubst, dass Design offen sein sollte — werde Open Design Fellow, gestalte das Produkt gemeinsam mit dem Kernteam und hilf mehr Menschen dabei, die Zukunft des Designs mitzubestimmen. Details → [`MAINTAINERS.md`](MAINTAINERS.md) und [Discord](https://discord.gg/qhbcCH8Am4).
 
 <p align="center">
-  <img src="https://repo-assets.open-design.ai/resources/images/banner.png" alt="Open Design — The open-source Claude Design alternative · 150 Design Systems · 261 Plugins · 21 Coding Agents · 14 Media Providers" width="100%" />
+  <img src="https://repo-assets.open-design.ai/resources/images/hero.png" alt="Open Design — The open-source Claude Design alternative · 150 Design Systems · 261 Plugins · 21 Coding Agents · 14 Media Providers" width="100%" />
 </p>
 
 <p align="center">

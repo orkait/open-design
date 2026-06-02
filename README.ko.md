@@ -5,7 +5,7 @@
 > 🏅 **Open Design Fellow 프로그램이 지금 열렸습니다.** 디자인은 열려 있어야 한다고 믿으신다면 — Open Design Fellow가 되어 핵심 팀과 함께 제품을 빚어내고, 더 많은 사람이 디자인의 미래를 정의하는 일에 참여하도록 도와주세요. 자세히 → [`MAINTAINERS.md`](MAINTAINERS.md) 및 [Discord](https://discord.gg/qhbcCH8Am4).
 
 <p align="center">
-  <img src="https://repo-assets.open-design.ai/resources/images/banner.png" alt="Open Design — The open-source Claude Design alternative · 150 Design Systems · 261 Plugins · 21 Coding Agents · 14 Media Providers" width="100%" />
+  <img src="https://repo-assets.open-design.ai/resources/images/hero.png" alt="Open Design — The open-source Claude Design alternative · 150 Design Systems · 261 Plugins · 21 Coding Agents · 14 Media Providers" width="100%" />
 </p>
 
 <p align="center">
