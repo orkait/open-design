@@ -154,8 +154,7 @@ sections in the order they were composed.
       "redactedContent": "bounded redacted system prompt content",
       "truncated": true
     }
-  ],
-  "composedPromptPreview": "not emitted in Phase 1"
+  ]
 }
 ```
 
@@ -262,12 +261,16 @@ interface PromptPrivacyTelemetry {
     | 'redacted-generation-input';
   redactionVersion: string;
   maxSectionBytes: number;
+  maxDaemonSystemPromptBytes: number;
+  maxTotalSectionBytes: number;
   maxComposedBytes: number;
   localPaths: 'redacted' | 'hashed' | 'omitted';
   attachments: 'metadata-only' | 'redacted-preview';
   toolTokens: 'omitted';
 }
 ```
+
+Phase 1 uses `redactionVersion: 'prompt-stack-redaction-v1'`.
 
 Capture modes:
 
@@ -323,22 +326,27 @@ Prompt observability must be safe by default.
 
 Rules:
 
-- Hash raw prompt strings before redaction so equality/regression analysis works
-  without relying on content. Use SHA-256 with a `sha256:` prefix.
-- Report byte counts for raw strings.
+- Use normalized redacted prompt text for stable fingerprints. Before computing
+  `promptStackHash` or section hashes, redact secrets, replace local paths with
+  `[REDACTED:path]`, and exclude attachment bodies. Use SHA-256 with a
+  `sha256:` prefix. Report raw byte counts separately so payload-size analysis
+  still reflects the prompt sent to the agent.
 - Run lexical secret redaction before any preview enters Langfuse.
 - Omit tool tokens entirely. Do not rely on redaction for tool token safety.
 - Treat `runtimeToolPrompt`, cwd hints, linked dirs, MCP config, OAuth-derived
   context, attachments, and image paths as sensitive.
-- Redact local paths to `[REDACTED_PATH]` by default. A path like
+- Redact local paths to `[REDACTED:path]` by default. A path like
   `/Users/<name>/Documents/...` can identify a person or repo; preserving only
   the basename can still leak project, customer, or user names.
+- Extend Phase 1 redaction to cover local filesystem paths. This is new
+  prompt-stack redaction behavior, not covered by the existing generic
+  secret-redaction rules.
 - Report attachment counts, file extensions, size buckets, and hashes before
   reporting any attachment text.
-- Bound captured content. Phase 1 captures up to 16 KiB per redacted
-  instruction section and up to 64 KiB total across all redacted section
-  content for one run. Record bytes and truncation state when either bound is
-  hit.
+- Bound captured content. Phase 1 captures up to 32 KiB for
+  `daemonSystemPrompt`, up to 16 KiB for every other redacted instruction
+  section, and up to 96 KiB total across all redacted section content for one
+  run. Record bytes and truncation state when any bound is hit.
 - Never emit prompt previews when Langfuse content capture is disabled.
 - Add tests with fake API keys, bearer tokens, OD tool tokens, emails, local
   paths, and attachment names to prove previews are redacted.
@@ -455,15 +463,16 @@ Phase 1 capture target:
 - Reuse the existing Settings -> Privacy "Conversation and tool content" consent
   gate. Do not add a prompt-stack-specific UI toggle or environment override in
   Phase 1.
-- Use plain SHA-256 with a `sha256:` prefix for prompt, section, and stack
-  fingerprints.
-- Capture up to 16 KiB per allowed redacted instruction section and up to 64
-  KiB total redacted section content per run.
-- Replace local paths with `[REDACTED_PATH]`.
-- Verify whether completed Langfuse generations already include bounded
-  redacted assistant output. If output is missing, Phase 1 should add bounded
-  redacted assistant output capture so prompt behavior can be inspected against
-  the model result.
+- Use SHA-256 with a `sha256:` prefix for prompt, section, and stack
+  fingerprints after secret redaction, local path normalization, and attachment
+  body exclusion. Keep raw byte counts separately.
+- Capture up to 32 KiB for `daemonSystemPrompt`, up to 16 KiB for every other
+  allowed redacted instruction section, and up to 96 KiB total redacted section
+  content per run.
+- Replace local paths with `[REDACTED:path]`.
+- Preserve the existing bounded redacted assistant output capture on completed
+  Langfuse generations. Phase 1 does not add a new output path; tests should
+  confirm promptStack wiring does not regress generation output.
 
 Phase 1 section-content allowlist:
 
@@ -487,6 +496,24 @@ Phase 1 section-content allowlist:
   `commentAttachments`, and `promptImagePaths`. Report presence, counts, file
   extensions, size buckets, hashes, and truncation state where available, but do
   not upload raw path strings or attachment bodies.
+
+When the 96 KiB total redacted-section budget is exhausted, keep metadata for
+every section and allocate content budget by diagnostic priority rather than
+composition order:
+
+1. `formOverride`
+2. `daemonSystemPrompt`
+3. `runtimeToolPrompt`
+4. `clientSystemPrompt`
+5. skill, design-system, plugin, and stage prompt sections
+6. `researchCommandContract`
+7. `runContextPrompt`
+8. `echoGuard`
+9. `userRequest`
+
+If a lower-priority section cannot include redacted content because the total
+budget is exhausted, mark it with a suppression/truncation reason such as
+`total_budget_exceeded`.
 
 Out of scope for Phase 1:
 
@@ -576,21 +603,25 @@ Phase 1 tests:
 - Unit-test bounded redacted section capture for daemon system prompt,
   form-answer override, runtime tool prompt, client system prompt, `skillPrompt`,
   `designSystemPrompt`, `pluginStagePrompt` sections, and user request.
+- Unit-test local path redaction to `[REDACTED:path]`; this covers macOS/Linux
+  home paths, project paths, cwd hints, linked dirs, and prompt image paths.
+- Unit-test stable hashes after redaction and path normalization so different
+  local directories do not fragment the same prompt-stack fingerprint.
 - Unit-test metadata-only capture for cwd hints, linked dirs, attachments,
   comment attachments, and prompt image paths.
-- Unit-test 16 KiB per-section and 64 KiB total redacted section content limits,
-  including byte counts and truncation flags.
+- Unit-test 32 KiB `daemonSystemPrompt`, 16 KiB other-section, and 96 KiB total
+  redacted section content limits, including byte counts, truncation flags, and
+  total-budget priority behavior.
 - Bridge tests assert `promptStack` appears in Langfuse trace and generation
   metadata.
 - Bridge tests assert redacted section content follows the existing
   `telemetry.metrics && telemetry.content` Langfuse delivery gate.
-- Bridge tests assert local paths are replaced with `[REDACTED_PATH]` and raw
+- Bridge tests assert local paths are replaced with `[REDACTED:path]` and raw
   attachment bodies are not uploaded.
 - Existing tests continue to assert top-level `trace.input` is the user prompt.
 - Existing tests continue to assert `generation.input` is the user prompt.
-- Bridge tests verify completed generations include bounded redacted assistant
-  output, or explicitly document that existing output capture already satisfies
-  this requirement.
+- Bridge tests preserve the existing bounded redacted assistant output on
+  completed generations.
 - Chat-route tests cover discovery, skip-discovery, form-answer overrides,
   media surfaces, active skill, active design system, and plugin snapshot
   dimensions.
@@ -614,7 +645,7 @@ Phase 3 tests:
 - Should a future privacy hardening pass move from plain SHA-256 to
   installation-scoped HMAC-SHA-256 if cross-install prompt correlation becomes
   a concern?
-- What is the right threshold for shrinking the 16 KiB / 64 KiB bounds if
+- What is the right threshold for shrinking the 32 KiB / 16 KiB / 96 KiB bounds if
   Langfuse metadata payload size affects ingestion reliability?
 - Which traces should be sampled into human annotation queues first: failures,
   low user feedback, high token cost, or new prompt-stack hashes?
