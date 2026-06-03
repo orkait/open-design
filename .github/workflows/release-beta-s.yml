@@ -13,12 +13,12 @@ on:
         description: "Run the mac arm64 self-hosted beta lane."
         required: true
         type: boolean
-        default: false
+        default: true
       publish:
-        description: "Publish release assets and metadata. Keep disabled while validating the runner lane."
+        description: "Publish release assets and metadata to the MinIO-backed beta origin."
         required: true
         type: boolean
-        default: false
+        default: true
       release_version:
         description: "Optional beta version override. Leave empty to resolve the next MinIO-backed beta version from metadata."
         required: false

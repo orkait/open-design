@@ -115,6 +115,9 @@ describe("packaged smoke workflow", () => {
 
     expect(workflow).toContain("win_enable:");
     expect(workflow).toContain("mac_enable:");
+    expect(workflow).toMatch(/win_enable:[\s\S]*?default: true/);
+    expect(workflow).toMatch(/mac_enable:[\s\S]*?default: true/);
+    expect(workflow).toMatch(/publish:[\s\S]*?default: true/);
     expect(workflow).toContain("win_smoke_mode:");
     expect(workflow).toContain("win_target:");
     expect(workflow).toContain("win_update_metadata_url:");
