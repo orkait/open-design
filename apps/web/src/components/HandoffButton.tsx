@@ -738,12 +738,7 @@ export function HandoffButton({
                         title={t('handoff.copyPromptForTarget', { target: cliDisplayName(cli) })}
                       >
                         <AgentIcon id={cli.id} size={24} />
-                        <span className="handoff-target-copy">
-                          <span className="handoff-target-label">{cliDisplayName(cli)}</span>
-                          <span className="handoff-target-meta">
-                            {copied ? t('handoff.copied') : t('handoff.notInstalled')}
-                          </span>
-                        </span>
+                        <span className="handoff-target-label">{cliDisplayName(cli)}</span>
                       </button>
                     );
                   })}

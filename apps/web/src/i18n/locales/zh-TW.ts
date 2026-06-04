@@ -45,7 +45,7 @@ export const zhTW: Dict = {
   'handoff.editorSection': '透過編輯器開啟',
   'handoff.cliSection': '複製給 CLI',
   'handoff.clickOpen': '點擊開啟',
-  'handoff.framework': '目標框架',
+  'handoff.framework': '程式碼框架',
   'handoff.framework.react': 'React',
   'handoff.framework.vue': 'Vue.js',
   'handoff.framework.svelte': 'Svelte',

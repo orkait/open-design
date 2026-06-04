@@ -576,7 +576,7 @@ export const zhCN: Dict = {
   'handoff.editorSection': '通过编辑器打开',
   'handoff.cliSection': '复制给 CLI',
   'handoff.clickOpen': '点击打开',
-  'handoff.framework': '目标框架',
+  'handoff.framework': '代码框架',
   'handoff.framework.react': 'React',
   'handoff.framework.vue': 'Vue.js',
   'handoff.framework.svelte': 'Svelte',

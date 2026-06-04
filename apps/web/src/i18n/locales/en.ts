@@ -577,7 +577,7 @@ export const en: Dict = {
   'handoff.editorSection': 'Open with editor',
   'handoff.cliSection': 'Copy for CLI',
   'handoff.clickOpen': 'Click to open',
-  'handoff.framework': 'Target stack',
+  'handoff.framework': 'Code framework',
   'handoff.framework.react': 'React',
   'handoff.framework.vue': 'Vue.js',
   'handoff.framework.svelte': 'Svelte',
