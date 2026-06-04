@@ -21,6 +21,14 @@ const releasePublishBetaCommonScriptPath = join(
   "release",
   "publish-beta-common.ps1",
 );
+const releasePublishBetaMetadataScriptPath = join(
+  workspaceRoot,
+  ".github",
+  "scripts",
+  "release",
+  "r2",
+  "publish-beta-metadata.ts",
+);
 const releaseBuildBetaScriptPath = join(workspaceRoot, ".github", "scripts", "release", "build-beta.ps1");
 const releaseWinReportScriptPath = join(workspaceRoot, ".github", "scripts", "release", "report", "win.ps1");
 
@@ -118,10 +126,11 @@ describe("packaged smoke workflow", () => {
   });
 
   it("keeps the self-hosted beta lane metadata-driven with reusable platform publish scripts", async () => {
-    const [workflow, macAssetsScript, buildBetaScript] = await Promise.all([
+    const [workflow, macAssetsScript, buildBetaScript, publishBetaMetadataScript] = await Promise.all([
       readFile(releaseBetaSelfHostedWorkflowPath, "utf8"),
       readFile(releaseMacAssetsScriptPath, "utf8"),
       readFile(releaseBuildBetaScriptPath, "utf8"),
+      readFile(releasePublishBetaMetadataScriptPath, "utf8"),
     ]);
 
     expect(workflow).toContain("win_enable:");
@@ -226,6 +235,11 @@ describe("packaged smoke workflow", () => {
     expect(workflow).toContain('STATE_SOURCE: ${{ needs.metadata.outputs.state_source }}');
     expect(workflow).toContain("Verify beta metadata");
     expect(workflow).toContain("node --experimental-strip-types .github/scripts/release/r2/verify-beta-metadata.ts");
+    expect(publishBetaMetadataScript).toContain("validatePlatformManifest");
+    expect(publishBetaMetadataScript).toContain("manifest.releaseVersion !== releaseVersion");
+    expect(publishBetaMetadataScript).toContain("manifest.platformKey !== key");
+    expect(publishBetaMetadataScript).toContain("manifest.r2.versionPrefix.includes(`/versions/${releaseVersion}`)");
+    expect(publishBetaMetadataScript).toContain("refusing stale ${def.key} platform manifest");
     expect(workflow).not.toContain("actions/setup-node@v6");
     expect(workflow).not.toContain("publish-beta-metadata.ps1");
     expect(workflow).not.toContain("probe-beta-public-read.ps1");

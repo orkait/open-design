@@ -4,10 +4,15 @@ import { getS3ObjectText, uploadS3Object } from "./s3-upload.ts";
 
 type PlatformManifest = {
   artifacts?: Record<string, { url?: string }>;
+  channel?: string;
   enabled?: boolean;
   feed?: { latestUrl?: string };
   label?: string;
+  platformKey?: string;
+  r2?: { versionPrefix?: string };
+  reason?: string | null;
   result?: string;
+  releaseVersion?: string;
   signed?: boolean;
   status?: string;
 };
@@ -72,6 +77,25 @@ async function readManifest(key): Promise<PlatformManifest | null> {
   return JSON.parse(text);
 }
 
+function validatePlatformManifest(key: string, manifest: PlatformManifest): string | null {
+  if (manifest.channel !== releaseChannel) {
+    return `channel=${String(manifest.channel)}`;
+  }
+  if (manifest.releaseVersion !== releaseVersion) {
+    return `releaseVersion=${String(manifest.releaseVersion)}`;
+  }
+  if (manifest.platformKey !== key) {
+    return `platformKey=${String(manifest.platformKey)}`;
+  }
+  if (manifest.status !== "published") {
+    return `status=${String(manifest.status)}`;
+  }
+  if (manifest.r2?.versionPrefix == null || !manifest.r2.versionPrefix.includes(`/versions/${releaseVersion}`)) {
+    return `versionPrefix=${String(manifest.r2?.versionPrefix)}`;
+  }
+  return null;
+}
+
 const bucket = required("CLOUDFLARE_R2_RELEASES_BUCKET");
 const accessKeyId = required("AWS_ACCESS_KEY_ID");
 const endpointUrl = required("CLOUDFLARE_R2_RELEASES_URL").replace(/\/+$/, "");
@@ -107,7 +131,11 @@ for (const def of platformDefs) {
   if (!enabled(def.env)) continue;
   expectedPlatforms.push(def.key);
   const manifest = await readManifest(def.key);
-  if (manifest != null && def.result === "success") {
+  const invalidReason = manifest == null ? null : validatePlatformManifest(def.key, manifest);
+  if (manifest != null && invalidReason != null && def.result === "success") {
+    throw new Error(`refusing stale ${def.key} platform manifest for ${releaseVersion}: ${invalidReason}`);
+  }
+  if (manifest != null && invalidReason == null && def.result === "success") {
     platforms[def.key] = {
       ...manifest,
       enabled: true,
@@ -119,6 +147,7 @@ for (const def of platformDefs) {
     platforms[def.key] = {
       enabled: true,
       label: def.label,
+      reason: manifest == null ? "missing manifest" : invalidReason,
       result: def.result,
       status,
     };
