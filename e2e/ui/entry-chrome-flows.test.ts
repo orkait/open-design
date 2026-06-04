@@ -379,6 +379,8 @@ test('[P0] entry execution pill opens the Local CLI and BYOK switcher from Home'
 test('[P2] entry help menu exposes community links and topbar routes Use everywhere', async ({ page }) => {
   await gotoEntryHome(page);
 
+  // The help launcher lives in the (collapsed-by-default) rail footer.
+  await ensureRailOpen(page);
   await page.getByTestId('entry-help-trigger').click();
   const menu = page.locator('.entry-help-popover[role="menu"]');
   await expect(menu).toBeVisible();
@@ -399,7 +401,9 @@ test('[P2] entry help menu exposes community links and topbar routes Use everywh
   );
 
   await ensureRailOpen(page);
-  await page.getByTestId('entry-nav-logo').click();
+  // Return home via the explicit Home nav (the logo is overlaid by the
+  // collapse button on hover, which would intercept the click).
+  await page.getByTestId('entry-nav-home').click();
   await expect(page.getByTestId('home-hero')).toBeVisible();
   await page.getByTestId('entry-help-trigger').click();
   await expect(menu).toBeVisible();
@@ -450,6 +454,7 @@ test('[P1] entry execution pill remains available across secondary entry pages',
   ];
 
   for (const destination of destinations) {
+    await ensureRailOpen(page);
     await page.getByTestId(destination.nav).click();
     await expect(
       page.locator('h1').filter({ hasText: destination.heading }).first(),
@@ -486,7 +491,9 @@ test('[P1] home starters can browse registry and use a starter query from Home',
   await expect(page.getByTestId('plugins-import-button')).toBeVisible();
 
   await ensureRailOpen(page);
-  await page.getByTestId('entry-nav-logo').click();
+  // Return home via the explicit Home nav (the logo is overlaid by the
+  // collapse button on hover, which would intercept the click).
+  await page.getByTestId('entry-nav-home').click();
   await expect(page.getByTestId('home-hero')).toBeVisible();
   await expect(page.getByTestId('plugins-home-use-menu-localized-plugin')).toBeVisible();
   await page.getByTestId('plugins-home-use-menu-localized-plugin').click({ force: true });

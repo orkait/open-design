@@ -182,14 +182,16 @@ test('[P1] home topbar settings button opens settings and closes the execution p
   await expect(popover).toHaveCount(0);
 });
 
-test('[P2] clicking the top-left logo from another entry view returns to the home hero', async ({ page }) => {
+test('[P2] returning from another entry view via the home nav reaches the home hero', async ({ page }) => {
   await gotoEntryHome(page);
 
   await page.getByTestId('entry-use-everywhere-button').click();
   await expect(page.getByRole('heading', { name: 'Integrations' })).toBeVisible();
 
+  // The logo doubles as a hover-to-collapse control now, so home is reached
+  // through the explicit Home nav item rather than clicking the brand mark.
   await ensureRailOpen(page);
-  await page.getByTestId('entry-nav-logo').click();
+  await page.getByTestId('entry-nav-home').click();
   await expect(page.getByTestId('home-hero')).toBeVisible();
   await expect(page.getByTestId('home-hero-input')).toBeVisible();
   await expect(page.getByTestId('home-hero-type-tabs')).toBeVisible();
