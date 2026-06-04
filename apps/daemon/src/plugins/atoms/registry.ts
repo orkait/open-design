@@ -35,6 +35,7 @@ export interface AtomWorkerContext {
   runId:          string;
   projectId:      string;
   conversationId: string | null;
+  daemonUrl:      string | null;
   cwd:            string | null;
   entryFile:      string | null;
   stage:          PipelineStage;

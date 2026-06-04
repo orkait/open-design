@@ -115,6 +115,47 @@ describe('visual validation atom runner', () => {
     }
   });
 
+  it('uses the daemon preview route instead of file:// when project context is available', async () => {
+    const cwd = await mkdtemp(path.join(os.tmpdir(), 'od-visual-preview-route-'));
+    const originalFetch = globalThis.fetch;
+    try {
+      await writeFile(path.join(cwd, 'index.html'), '<!doctype html><html><body>ok</body></html>', 'utf8');
+      await writeFile(
+        path.join(cwd, 'reference-home.png'),
+        PNG.sync.write(createFilledPng(200, 120, [255, 255, 255, 255])),
+      );
+
+      globalThis.fetch = async (input) => {
+        expect(String(input)).toBe(
+          'http://127.0.0.1:7456/api/projects/project-123/preview-url?file=index.html',
+        );
+        return new Response(
+          JSON.stringify({ url: '/api/projects/project-123/preview/scope-123/index.html' }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      };
+
+      let capturedEntryUrl: string | null = null;
+      const result = await runVisualValidation({
+        cwd,
+        projectId: 'project-123',
+        daemonUrl: 'http://127.0.0.1:7456/',
+        captureScreenshot: async ({ entryUrl, outputPath }) => {
+          capturedEntryUrl = entryUrl;
+          await writeFile(outputPath, PNG.sync.write(createFilledPng(200, 120, [255, 255, 255, 255])));
+        },
+      });
+
+      expect(result.report.status).toBe('ok');
+      expect(capturedEntryUrl).toBe(
+        'http://127.0.0.1:7456/api/projects/project-123/preview/scope-123/index.html',
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
   it('captures with the reference dimensions instead of the old clamp bounds', async () => {
     const cwd = await mkdtemp(path.join(os.tmpdir(), 'od-visual-reference-viewport-'));
     try {

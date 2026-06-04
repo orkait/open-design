@@ -58,6 +58,8 @@ export interface VisualValidationReport {
 
 export interface RunVisualValidationOptions {
   cwd: string;
+  projectId?: string | null;
+  daemonUrl?: string | null;
   referenceImages?: ReadonlyArray<string>;
   entryFile?: string | null;
   pixelmatchThreshold?: number;
@@ -106,9 +108,15 @@ export async function runVisualValidation(
       const actualPath = path.join(outputDir, `${stem}.actual.png`);
       const diffPath = path.join(outputDir, `${stem}.diff.png`);
       const capture = input.captureScreenshot ?? captureWithPlaywright;
+      const entryUrl = await resolveVisualValidationEntryUrl({
+        cwd,
+        entryFile,
+        ...(input.projectId == null ? {} : { projectId: input.projectId }),
+        ...(input.daemonUrl == null ? {} : { daemonUrl: input.daemonUrl }),
+      });
       await capture({
         entryFile,
-        entryUrl: pathToFileURL(path.join(cwd, entryFile)).href,
+        entryUrl,
         outputPath: actualPath,
         viewport,
       });
@@ -323,6 +331,30 @@ function buildFailedVisualValidationResult(
     },
     signals: { 'preview.ok': false, 'critique.score': 1 },
   };
+}
+
+async function resolveVisualValidationEntryUrl(input: {
+  cwd: string;
+  entryFile: string;
+  projectId?: string | null;
+  daemonUrl?: string | null;
+}): Promise<string> {
+  if (!input.projectId || !input.daemonUrl) {
+    return pathToFileURL(path.join(input.cwd, input.entryFile)).href;
+  }
+  const base = input.daemonUrl.replace(/\/+$/, '');
+  const response = await fetch(
+    `${base}/api/projects/${encodeURIComponent(input.projectId)}/preview-url?file=${encodeURIComponent(input.entryFile)}`,
+    { headers: { accept: 'application/json' } },
+  );
+  if (!response.ok) {
+    throw new Error(`visual validation preview route lookup failed: ${response.status} ${response.statusText}`);
+  }
+  const payload = await response.json() as { url?: unknown };
+  if (typeof payload.url !== 'string' || payload.url.length === 0) {
+    throw new Error('visual validation preview route lookup returned no url');
+  }
+  return new URL(payload.url, `${base}/`).toString();
 }
 
 async function resolveReferenceImages(

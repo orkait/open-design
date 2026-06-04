@@ -10832,6 +10832,7 @@ export async function startServer({
           runId:          run.id,
           projectId:      projectIdForRun,
           conversationId: run.conversationId ?? null,
+          daemonUrl,
           cwd,
           entryFile,
           stage,

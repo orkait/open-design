@@ -83,6 +83,8 @@ async function visualValidationWorker(ctx: AtomWorkerContext): Promise<AtomOutco
   }
   const { report, signals } = await runVisualValidation({
     cwd:       ctx.cwd,
+    projectId: ctx.projectId,
+    daemonUrl: ctx.daemonUrl,
     entryFile: ctx.entryFile,
   });
   return {
