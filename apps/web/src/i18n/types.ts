@@ -962,9 +962,6 @@ export interface Dict {
   'recentProjects.title': string;
   'recentProjects.viewAll': string;
   'recentProjects.empty': string;
-  'home.openExistingProject': string;
-  'home.openExistingProjectOpening': string;
-  'home.chooseFolderSubtitle': string;
   'pluginsHome.title': string;
   'pluginsHome.subtitle': string;
   'pluginsHome.browseRegistry': string;

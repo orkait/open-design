@@ -8,7 +8,6 @@
 // textarea can live centered in the hero.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { OpenDesignHostProjectImportSuccess } from '@open-design/host';
 import type {
   ApplyResult,
   ChatSessionMode,
@@ -86,7 +85,6 @@ import type { PluginUseAction } from './plugins-home/useActions';
 import { RecentProjectsStrip } from './RecentProjectsStrip';
 import { AnimatePresence } from 'motion/react';
 import { Toast } from './Toast';
-import { useOpenFolderImport } from './useOpenFolderImport';
 
 interface ActivePlugin {
   record: InstalledPluginRecord;
@@ -200,8 +198,6 @@ interface Props {
   onBrowseRegistry?: () => void;
   onOpenIntegrations?: () => void;
   onOpenMcp?: () => void;
-  onImportFolder?: (baseDir: string) => Promise<void> | void;
-  onImportFolderResponse?: (response: OpenDesignHostProjectImportSuccess) => Promise<void> | void;
   // Stage B: optional callbacks the rail's migration chips need.
   // HomeView itself never imports them; EntryShell threads them
   // through so the dispatcher can stay declarative.
@@ -230,8 +226,6 @@ export function HomeView({
   onBrowseRegistry,
   onOpenIntegrations,
   onOpenMcp,
-  onImportFolder,
-  onImportFolderResponse,
   onOpenNewProject,
   promptHandoff,
   skills = EMPTY_SKILLS,
@@ -333,13 +327,6 @@ export function HomeView({
       }
     });
   }, []);
-  const importSkillId = useMemo(() => {
-    const prototypeSkills = skills.filter((skill) => skill.mode === 'prototype');
-    return prototypeSkills.find((skill) => skill.defaultFor.includes('prototype'))?.id
-      ?? prototypeSkills[0]?.id
-      ?? null;
-  }, [skills]);
-
   useEffect(() => {
     let cancelled = false;
     const load = () => {
@@ -1528,12 +1515,6 @@ export function HomeView({
         executionSwitcher={executionSwitcher}
       />
 
-      <HomeExistingProjectAction
-        skillId={importSkillId}
-        onImportFolder={onImportFolder}
-        onImportFolderResponse={onImportFolderResponse}
-      />
-
       <RecentProjectsStrip
         projects={projects}
         designSystems={designSystems}
@@ -1667,60 +1648,6 @@ export function HomeView({
         </div>
       ) : null}
     </div>
-  );
-}
-
-function HomeExistingProjectAction({
-  skillId,
-  onImportFolder,
-  onImportFolderResponse,
-}: {
-  skillId: string | null;
-  onImportFolder?: (baseDir: string) => Promise<void> | void;
-  onImportFolderResponse?: (response: OpenDesignHostProjectImportSuccess) => Promise<void> | void;
-}) {
-  const t = useT();
-  const folderImport = useOpenFolderImport({
-    skillId,
-    onImportFolder,
-    onImportFolderResponse,
-  });
-  if (!folderImport.available) return null;
-
-  return (
-    <section className="home-existing-project" data-testid="home-existing-project">
-      <form
-        className="home-existing-project__form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void folderImport.openFolder();
-        }}
-      >
-        <button
-          type="submit"
-          className="home-existing-project__button"
-          disabled={folderImport.importing}
-        >
-          <Icon name="folder" size={14} />
-          <span>
-            {folderImport.importing
-              ? t('home.openExistingProjectOpening')
-              : t('home.openExistingProject')}
-          </span>
-        </button>
-      </form>
-      <p className="home-existing-project__subtitle">
-        {t('home.chooseFolderSubtitle')}
-      </p>
-      {folderImport.error ? (
-        <Toast
-          message={folderImport.error.message}
-          details={folderImport.error.details ?? null}
-          ttlMs={6000}
-          onDismiss={folderImport.clearError}
-        />
-      ) : null}
-    </section>
   );
 }
 

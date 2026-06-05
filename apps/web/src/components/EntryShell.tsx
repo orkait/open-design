@@ -733,8 +733,6 @@ export function EntryShell({
                 onBrowseRegistry={() => changeView('plugins')}
                 onOpenIntegrations={() => openIntegrationTab('connectors')}
                 onOpenMcp={() => openIntegrationTab('mcp')}
-                onImportFolder={onImportFolder}
-                onImportFolderResponse={onImportFolderResponse}
                 onOpenNewProject={(tab) => {
                   openNewProject(tab);
                 }}
