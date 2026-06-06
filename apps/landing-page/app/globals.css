@@ -2752,6 +2752,14 @@ footer {
   .brand-meta { display: none; }
   .nav-links { gap: 28px; }
   .nav-side .nav-icon { display: none; }
+  /*
+   * Retire the AMR pill here rather than waiting for the 1080px hamburger
+   * breakpoint. Between 1080–1180px the six nav dropdowns + AMR pill + Star
+   * + Download overran the row and the AMR pill overlapped the Community
+   * link (it read as a garbled "C⊛AMR"). AMR stays reachable via the Agent
+   * dropdown, so dropping the standalone pill early costs no discoverability.
+   */
+  .nav-side .nav-amr { display: none; }
 }
 
 /* nav: at ≤1080px there's no clean way to fit Product · Skills · Systems ·

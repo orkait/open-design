@@ -543,8 +543,14 @@ export function Header({
             data-download-cta
             data-download-page
           >
+            {/*
+              The CPU-arch chip (（Apple Silicon）/（Apple Intel）) is
+              intentionally NOT rendered in the nav CTA — at mid widths it
+              pushed the row over the available space and crowded the bar.
+              The arch suffix still appears on the homepage hero download
+              button (page.tsx) and the /download/ page, where there is room.
+            */}
             {headerCopy.download}
-            <span className='download-arch' data-download-arch hidden />
           </a>
           <details className='locale-switch nav-locale' data-locale-switch>
             <summary
