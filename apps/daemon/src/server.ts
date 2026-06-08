@@ -12207,6 +12207,10 @@ export async function startServer({
             : '';
         return `${type}:${text.length} chars`;
       }
+      if (type === 'status') {
+        const label = payload?.label ? String(payload.label) : 'unknown';
+        return `status:${label}`;
+      }
       return type;
     };
     const clearInactivityWatchdog = () => {
@@ -13067,6 +13071,9 @@ export async function startServer({
         mcpServers,
         ...(def.id === 'amr' ? { modelUnavailableErrorCode: 'AMR_MODEL_UNAVAILABLE' } : {}),
         send: (event, data) => {
+          if (event === 'agent') {
+            lastAgentEventPhase = summarizeAgentEventForInactivity(data);
+          }
           noteAgentActivity();
           if (event === 'agent') noteFirstTokenFromAgentEvent(data);
           if (def.id === 'amr' && event === 'error') {
