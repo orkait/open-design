@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { startUpdaterFixtureServer } from "../src/updater-fixture.js";
 
@@ -98,6 +101,46 @@ describe("updater fixture server", () => {
 
       const payload = await fetch(server.info.payloadUrl ?? "");
       expect(await payload.text()).toBe("fixture payload");
+
+      const checksum = await fetch(server.info.payloadChecksumUrl ?? "");
+      expect(await checksum.text()).toContain(server.info.payloadSha256);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("serves launcher payload bytes from a real archive path", async () => {
+    const root = await mkdtemp(join(tmpdir(), "od-tools-serve-payload-"));
+    const payloadPath = join(root, "Open Design-release-preview-payload.zip");
+    await writeFile(payloadPath, "real payload bytes", "utf8");
+    const server = await startUpdaterFixtureServer({
+      channel: "preview",
+      payloadPath,
+      version: "2.0.0-preview.4",
+    });
+    try {
+      const metadataResponse = await fetch(server.info.metadataUrl);
+      expect(metadataResponse.ok).toBe(true);
+      const metadata = await metadataResponse.json() as {
+        platforms?: {
+          mac?: {
+            artifacts?: {
+              payload?: { name?: string; sha256Url?: string; size?: number; url?: string };
+            };
+          };
+        };
+      };
+      expect(metadata.platforms?.mac?.artifacts?.payload?.name).toBe("Open Design-release-preview-payload.zip");
+      expect(metadata.platforms?.mac?.artifacts?.payload?.size).toBe("real payload bytes".length);
+      expect(metadata.platforms?.mac?.artifacts?.payload?.url).toBe(server.info.payloadUrl);
+      expect(metadata.platforms?.mac?.artifacts?.payload?.sha256Url).toBe(server.info.payloadChecksumUrl);
+
+      const payload = await fetch(server.info.payloadUrl ?? "", {
+        headers: { range: "bytes=5-11" },
+      });
+      expect(payload.status).toBe(206);
+      expect(payload.headers.get("content-range")).toBe("bytes 5-11/18");
+      expect(await payload.text()).toBe("payload");
 
       const checksum = await fetch(server.info.payloadChecksumUrl ?? "");
       expect(await checksum.text()).toContain(server.info.payloadSha256);

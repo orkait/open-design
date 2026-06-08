@@ -10,11 +10,17 @@ function sectionBetween(content: string, start: string, end: string): string {
   return content.slice(startIndex, endIndex);
 }
 
+function countOccurrences(content: string, needle: string): number {
+  return content.split(needle).length - 1;
+}
+
 describe("release workflows", () => {
   it("requires Vela CLI only for beta mac arm64 packaging", async () => {
-    const [beta, betaSelfHosted, buildMac, buildWin, prepareWin, publishPlatform] = await Promise.all([
+    const [beta, betaSelfHosted, preview, stable, buildMac, buildWin, prepareWin, publishPlatform] = await Promise.all([
       readFile(new URL("../../../.github/workflows/release-beta.yml", import.meta.url), "utf8"),
       readFile(new URL("../../../.github/workflows/release-beta-s.yml", import.meta.url), "utf8"),
+      readFile(new URL("../../../.github/workflows/release-preview.yml", import.meta.url), "utf8"),
+      readFile(new URL("../../../.github/workflows/release-stable.yml", import.meta.url), "utf8"),
       readFile(new URL("../../../.github/workflow/scripts/release/build-platform.sh", import.meta.url), "utf8"),
       readFile(new URL("../../../.github/workflow/scripts/release/build-platform.ps1", import.meta.url), "utf8"),
       readFile(new URL("../../../.github/workflow/scripts/release/prepare-platform-assets.ps1", import.meta.url), "utf8"),
@@ -50,8 +56,20 @@ describe("release workflows", () => {
     expect(beta).toContain("win_x64_update_metadata_url:");
     expect(beta).toContain("OD_PACKAGED_E2E_MAC_UPDATE_METADATA_URL: ${{ inputs.mac_arm64_update_metadata_url }}");
     expect(beta).toContain("OD_PACKAGED_E2E_WIN_UPDATE_METADATA_URL: ${{ inputs.win_x64_update_metadata_url }}");
+    expect(beta).not.toContain("publish-beta-metadata.ts");
+    expect(beta).not.toContain("verify-beta-metadata.ts");
+    expect(beta).not.toContain("summary-beta.ts");
+    expect(beta).toContain("publish-metadata.ts");
+    expect(beta).toContain("verify-metadata.ts");
+    expect(beta).toContain("summary-metadata.ts");
     expect(betaSelfHosted).toContain("mac_arm64_update_metadata_url:");
     expect(selfHostedMac).toContain("OD_PACKAGED_E2E_MAC_UPDATE_METADATA_URL: ${{ inputs.mac_arm64_update_metadata_url }}");
+    expect(betaSelfHosted).not.toContain("publish-beta-metadata.ts");
+    expect(betaSelfHosted).not.toContain("verify-beta-metadata.ts");
+    expect(betaSelfHosted).not.toContain("summary-beta.ts");
+    expect(betaSelfHosted).toContain("publish-metadata.ts");
+    expect(betaSelfHosted).toContain("verify-metadata.ts");
+    expect(betaSelfHosted).toContain("summary-metadata.ts");
     expect(win).toContain("-IncludeZip $${{ inputs.win_x64_target == 'all' || inputs.win_x64_target == 'zip' }}");
     expect(selfHostedWin).toContain("-IncludeZip $${{ inputs.win_x64_target == 'all' || inputs.win_x64_target == 'zip' }}");
     expect(prepareWin).toContain("$sourcePayload = [string]$build.payloadPath");
@@ -62,5 +80,36 @@ describe("release workflows", () => {
     expect(buildWin).toContain('Measure-Step "validate launcher payload artifact"');
     expect(buildWin).toContain('Measure-Step "validate launcher payload update fixture"');
     expect(buildWin).toContain('Test-JsonString $manifest.entry.executable "entry.executable" "payload/Open Design.exe"');
+    expect(preview).not.toContain(".github/scripts/release/assets/mac.sh");
+    expect(preview).not.toContain(".github/scripts/release/assets/mac-intel.sh");
+    expect(preview).not.toContain(".github/scripts/release/assets/win.ps1");
+    expect(preview).not.toContain(".github/scripts/release/assets/linux.sh");
+    expect(preview).not.toContain(".github/scripts/release/r2/publish.sh");
+    expect(preview).not.toContain(".github/scripts/release/r2/verify.sh");
+    expect(preview).not.toContain(".github/scripts/release/r2/summary.sh");
+    expect(countOccurrences(preview, ".github/workflow/scripts/release/prepare-platform-assets.sh")).toBeGreaterThanOrEqual(3);
+    expect(preview).toContain(".github\\workflow\\scripts\\release\\prepare-platform-assets.ps1");
+    expect(countOccurrences(preview, ".github/workflow/scripts/release/storage/publish-platform.ts")).toBeGreaterThanOrEqual(4);
+    expect(preview).toContain(".github/workflow/scripts/release/storage/publish-metadata.ts");
+    expect(preview).toContain(".github/workflow/scripts/release/storage/verify-metadata.ts");
+    expect(preview).toContain(".github/workflow/scripts/release/storage/summary-metadata.ts");
+    expect(preview).toContain("RELEASE_ARTIFACT_MODE: all");
+    expect(preview).toContain("open-design-preview-mac-arm64-publish-manifest");
+    expect(preview).toContain("open-design-preview-win-x64-publish-manifest");
+    expect(stable).not.toContain(".github/scripts/release/assets/mac.sh");
+    expect(stable).not.toContain(".github/scripts/release/assets/mac-intel.sh");
+    expect(stable).not.toContain(".github/scripts/release/assets/win.ps1");
+    expect(stable).not.toContain(".github/scripts/release/assets/linux.sh");
+    expect(stable).not.toContain(".github/scripts/release/r2/publish.sh");
+    expect(stable).not.toContain(".github/scripts/release/r2/verify.sh");
+    expect(stable).not.toContain(".github/scripts/release/r2/summary.sh");
+    expect(countOccurrences(stable, ".github/workflow/scripts/release/prepare-platform-assets.sh")).toBeGreaterThanOrEqual(3);
+    expect(stable).toContain(".github\\workflow\\scripts\\release\\prepare-platform-assets.ps1");
+    expect(countOccurrences(stable, ".github/workflow/scripts/release/storage/publish-platform.ts")).toBeGreaterThanOrEqual(4);
+    expect(stable).toContain(".github/workflow/scripts/release/storage/publish-metadata.ts");
+    expect(stable).toContain(".github/workflow/scripts/release/storage/verify-metadata.ts");
+    expect(stable).toContain(".github/workflow/scripts/release/storage/summary-metadata.ts");
+    expect(stable).toContain("open-design-release-mac-arm64-publish-manifest");
+    expect(stable).toContain("open-design-release-win-x64-publish-manifest");
   });
 });
