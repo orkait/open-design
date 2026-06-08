@@ -5,6 +5,8 @@
 // pick rows must cancel `mousedown` so the editor keeps focus and the caller's
 // insertMention lands at the caret instead of the draft end.
 
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'react';
@@ -341,6 +343,50 @@ describe('ComposerPlusMenu pick-row caret protection', () => {
       expect(menu?.className).toContain('plus-menu__popup--flyout-y-up');
       expect(menu?.style.getPropertyValue('--plus-menu-flyout-max-height')).toBe('320px');
       expect(screen.getByText('Toolbox content')).toBeTruthy();
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth });
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalInnerHeight });
+    }
+  });
+
+  it('keeps contained design toolbox flyouts within the popup width', () => {
+    const originalInnerWidth = window.innerWidth;
+    const originalInnerHeight = window.innerHeight;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 360 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 420 });
+
+    try {
+      renderMenu({
+        toolboxLabel: 'Design toolbox',
+        renderToolbox: () => (
+          <div className="composer-design-toolbox-menu">Contained toolbox</div>
+        ),
+      });
+      const trigger = screen.getByTestId('plus-trigger') as HTMLButtonElement;
+      trigger.getBoundingClientRect = () =>
+        ({
+          x: 220,
+          y: 376,
+          top: 376,
+          left: 220,
+          right: 248,
+          bottom: 404,
+          width: 28,
+          height: 28,
+          toJSON: () => ({}),
+        }) as DOMRect;
+
+      fireEvent.click(trigger);
+      const menu = screen.getByRole('menu');
+      expect(menu.className).toContain('plus-menu__popup--flyout-contained');
+
+      fireEvent.click(screen.getByRole('menuitem', { name: /Design toolbox/i }));
+      expect(screen.getByText('Contained toolbox')).toBeTruthy();
+
+      const css = readFileSync(join(process.cwd(), 'src/styles/home/plus-menu.css'), 'utf8');
+      expect(css).toContain('.plus-menu__popup--flyout-contained .plus-menu__flyout .composer-design-toolbox-menu');
+      expect(css).toContain('width: 100%;');
+      expect(css).toContain('max-width: 100%;');
     } finally {
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth });
       Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalInnerHeight });

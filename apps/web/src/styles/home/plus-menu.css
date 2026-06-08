@@ -156,7 +156,9 @@
   display: none;
 }
 .plus-menu__popup--flyout-contained .plus-menu__flyout .composer-design-toolbox-menu {
+  width: 100%;
   min-width: 0;
+  max-width: 100%;
 }
 .plus-menu__search {
   display: flex;
