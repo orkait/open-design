@@ -104,6 +104,8 @@ export function NextStepActions({
     onShareToOpenDesign();
   }, [analytics.track, onShareToOpenDesign, shareToOpenDesignBusy]);
 
+  const hasRegularActions = !!((fileName && onShare) || onChip);
+
   return (
     <div className={styles.root} data-testid="next-step-actions">
       <div className={styles.label}>{t('nextStep.title')}</div>
@@ -111,34 +113,38 @@ export function NextStepActions({
           iteration directions; it's the only item that fires immediately
           instead of toggling into the composer, so it carries an icon + accent
           to read as an action rather than a selectable direction. */}
-      <div className={styles.row} data-testid="next-step-options-row">
-        {fileName && onShare ? (
-          <button type="button" className={styles.share} onClick={handleShare}>
-            <Icon name="share" size={14} />
-            <span>{t('nextStep.share')}</span>
-          </button>
-        ) : null}
-        {onChip
-          ? CHIPS.map((chip) => {
-              const label = t(chip.labelKey);
-              const isSelected = selected.includes(chip.id);
-              return (
-                <button
-                  key={chip.id}
-                  type="button"
-                  aria-pressed={isSelected}
-                  className={isSelected ? `${styles.chip} ${styles.chipSelected}` : styles.chip}
-                  onClick={() => toggleChip(chip)}
-                >
-                  {label}
-                </button>
-              );
-            })
-          : null}
-      </div>
+      {hasRegularActions ? (
+        <div className={styles.row} data-testid="next-step-options-row">
+          {fileName && onShare ? (
+            <button type="button" className={styles.share} onClick={handleShare}>
+              <Icon name="share" size={14} />
+              <span>{t('nextStep.share')}</span>
+            </button>
+          ) : null}
+          {onChip
+            ? CHIPS.map((chip) => {
+                const label = t(chip.labelKey);
+                const isSelected = selected.includes(chip.id);
+                return (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    aria-pressed={isSelected}
+                    className={isSelected ? `${styles.chip} ${styles.chipSelected}` : styles.chip}
+                    onClick={() => toggleChip(chip)}
+                  >
+                    {label}
+                  </button>
+                );
+              })
+            : null}
+        </div>
+      ) : null}
       {onShareToOpenDesign ? (
         <>
-          <div className={styles.divider} data-testid="next-step-open-design-divider" />
+          {hasRegularActions ? (
+            <div className={styles.divider} data-testid="next-step-open-design-divider" />
+          ) : null}
           <div className={styles.openDesignRow} data-testid="assistant-share-to-od-panel">
             <button
               type="button"

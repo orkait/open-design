@@ -91,6 +91,28 @@ describe('AssistantMessage next-step affordance', () => {
     expect(screen.queryByTestId('next-step-actions')).toBeNull();
   });
 
+  it('keeps the busy Share to Open Design row mounted on the source turn after it is no longer last', () => {
+    render(
+      <AssistantMessage
+        message={baseMessage({ producedFiles: [producedFile('landing.html')] })}
+        streaming={false}
+        projectId="proj-1"
+        isLast={false}
+        onFeedback={vi.fn()}
+        onShareToOpenDesign={vi.fn()}
+        shareToOpenDesignBusy
+        {...handlers()}
+      />,
+    );
+
+    const button = screen.getByTestId<HTMLButtonElement>('assistant-share-to-od');
+    expect(screen.getByTestId('next-step-actions')).toBeTruthy();
+    expect(button.disabled).toBe(true);
+    expect(button.textContent).toBe(en['assistant.shareToOpenDesignBusy']);
+    expect(screen.queryByTestId('next-step-options-row')).toBeNull();
+    expect(screen.queryByText(en['nextStep.chipPolishVisual'])).toBeNull();
+  });
+
   it('renders iteration chips without the Share action when the turn produced no previewable HTML artifact', () => {
     render(
       <AssistantMessage

@@ -579,14 +579,14 @@ function AssistantMessageImpl({
     hasEmptyResponse ||
     !!copyMarkdown ||
     canFork;
+  const canShowOpenDesignSubmission = !!onShareToOpenDesign && showFeedback && runSucceeded;
   const showOpenDesignSubmission =
-    !!onShareToOpenDesign && !!isLast && showFeedback && runSucceeded;
+    canShowOpenDesignSubmission && (!!isLast || shareToOpenDesignBusy);
   const showNextStepActions =
     !streaming &&
-    !!isLast &&
     !!projectId &&
     runSucceeded &&
-    (!!onArtifactChip || showOpenDesignSubmission);
+    ((!!isLast && !!onArtifactChip) || showOpenDesignSubmission);
   // Pre-output vs working: before any real content (text / thinking / tools /
   // files) the footer shimmers "Preparing…"; the moment content lands it
   // flips to "Working". The elapsed clock stays anchored to the persisted run
@@ -806,9 +806,9 @@ function AssistantMessageImpl({
         ) : null}
         {showNextStepActions ? (
           <NextStepActions
-            fileName={nextStepArtifactName}
-            onShare={nextStepArtifactName ? onArtifactShare : undefined}
-            onChip={onArtifactChip}
+            fileName={isLast ? nextStepArtifactName : null}
+            onShare={isLast && nextStepArtifactName ? onArtifactShare : undefined}
+            onChip={isLast ? onArtifactChip : undefined}
             onShareToOpenDesign={showOpenDesignSubmission ? onShareToOpenDesign : undefined}
             shareToOpenDesignBusy={shareToOpenDesignBusy}
           />
