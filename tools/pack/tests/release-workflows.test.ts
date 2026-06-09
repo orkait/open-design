@@ -16,7 +16,7 @@ function countOccurrences(content: string, needle: string): number {
 
 describe("release workflows", () => {
   it("requires Vela CLI only for beta mac arm64 packaging", async () => {
-    const [beta, betaSelfHosted, preview, stable, buildMac, buildWin, prepareMac, prepareWin, publishPlatform, winLifecycle, desktopUpdater, macBuild, macFs, installUnsafeDmg] = await Promise.all([
+    const [beta, betaSelfHosted, preview, stable, buildMac, buildWin, prepareMac, prepareWin, publishPlatform, winLifecycle, desktopUpdater, macBuild, macFs, installUnsafeDmg, winApp, macWorkspace, linuxPack] = await Promise.all([
       readFile(new URL("../../../.github/workflows/release-beta.yml", import.meta.url), "utf8"),
       readFile(new URL("../../../.github/workflows/release-beta-s.yml", import.meta.url), "utf8"),
       readFile(new URL("../../../.github/workflows/release-preview.yml", import.meta.url), "utf8"),
@@ -31,6 +31,9 @@ describe("release workflows", () => {
       readFile(new URL("../src/mac/build.ts", import.meta.url), "utf8"),
       readFile(new URL("../src/mac/fs.ts", import.meta.url), "utf8"),
       readFile(new URL("../../../scripts/install-unsafe-dmg.sh", import.meta.url), "utf8"),
+      readFile(new URL("../src/win/app.ts", import.meta.url), "utf8"),
+      readFile(new URL("../src/mac/workspace.ts", import.meta.url), "utf8"),
+      readFile(new URL("../src/linux.ts", import.meta.url), "utf8"),
     ]);
     const mac = sectionBetween(beta, "  build_mac_arm64:", "  build_mac_x64:");
     const macX64 = sectionBetween(beta, "  build_mac_x64:", "  build_win_x64:");
@@ -112,6 +115,14 @@ describe("release workflows", () => {
     expect(buildWin).toContain('Measure-Step "validate launcher payload artifact"');
     expect(buildWin).toContain('Measure-Step "validate launcher payload update fixture"');
     expect(buildWin).toContain('Test-JsonString $manifest.entry.executable "entry.executable" "payload/Open Design.exe"');
+    for (const workspaceBuild of [winApp, macWorkspace, linuxPack]) {
+      const sidecarProtoBuild = 'await runPnpm(config, ["--filter", "@open-design/sidecar-proto", "build"])';
+      const launcherProtoBuild = 'await runPnpm(config, ["--filter", "@open-design/launcher-proto", "build"])';
+      const sidecarBuild = 'await runPnpm(config, ["--filter", "@open-design/sidecar", "build"])';
+      expect(workspaceBuild).toContain(launcherProtoBuild);
+      expect(workspaceBuild.indexOf(sidecarProtoBuild)).toBeLessThan(workspaceBuild.indexOf(launcherProtoBuild));
+      expect(workspaceBuild.indexOf(launcherProtoBuild)).toBeLessThan(workspaceBuild.indexOf(sidecarBuild));
+    }
     expect(preview).not.toContain(".github/scripts/release/assets/mac.sh");
     expect(preview).not.toContain(".github/scripts/release/assets/mac-intel.sh");
     expect(preview).not.toContain(".github/scripts/release/assets/win.ps1");
