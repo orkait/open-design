@@ -2405,6 +2405,7 @@ export interface Dict {
   'designFiles.selectAll': string;
   'designFiles.dropTitle': string;
   'designFiles.dropDesc': string;
+  'designFiles.dropLabel': string;
   'designFiles.upload.title': string;
   'designFiles.paste.title': string;
   'designFiles.upload.label': string;
@@ -2475,6 +2476,8 @@ export interface Dict {
   'designFiles.modifiedExt': string;
   'designFiles.usefulInfoLabel': string;
   'designFiles.usefulInfoTip': string;
+  'designFiles.usefulInfoTip2': string;
+  'designFiles.usefulInfoTip3': string;
   'quickSwitcher.placeholder': string;
   'quickSwitcher.empty': string;
   'quickSwitcher.noMatches': string;
