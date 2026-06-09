@@ -73,6 +73,7 @@ describe("release workflows", () => {
     expect(betaSelfHosted).toContain("public-notarized");
     expect(selfHostedMac).toContain("RELEASE_DELIVERY_MODE: ${{ inputs.mac_arm64_delivery_mode }}");
     expect(selfHostedMac).toContain("RELEASE_SIGN_MODE: ${{ inputs.mac_arm64_delivery_mode == 'internal-updater' && 'sign-only' || inputs.mac_arm64_sign_mode }}");
+    expect(selfHostedMac).toContain("OD_UPDATE_METADATA_URL: ${{ inputs.release_public_origin }}/beta/latest/metadata.json");
     expect(betaSelfHosted).toContain("public-notarized mac_arm64_delivery_mode requires mac_arm64_sign_mode=notarize");
     expect(selfHostedMac).toContain("OD_PACKAGED_E2E_MAC_UPDATE_METADATA_URL: ${{ inputs.mac_arm64_update_metadata_url }}");
     expect(selfHostedMac).toContain("RELEASE_ARTIFACT_MODE: dmg-and-payload");

@@ -558,6 +558,7 @@ jobs:
           BUILD_JSON_PATH: ${{ runner.temp }}/release-build/mac_arm64/build.json
           BUILD_LOG_PATH: ${{ runner.temp }}/release-build/mac_arm64/build.log
           CSC_KEYCHAIN: /Library/Keychains/open-design-release-signing.keychain
+          OD_UPDATE_METADATA_URL: ${{ inputs.release_public_origin }}/beta/latest/metadata.json
           OD_PACKAGED_E2E_MAC_UPDATE_METADATA_URL: ${{ inputs.mac_arm64_update_metadata_url }}
           OD_PACKAGED_E2E_MAC_UPDATE_VERSION: ${{ inputs.mac_arm64_update_target_version }}
           RELEASE_BUILD_TARGET: ${{ inputs.mac_arm64_target }}
