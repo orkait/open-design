@@ -9,10 +9,11 @@ name: bake-plugin-previews
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/plugin-preview-video] # TEMP: debug branch entry — remove before merge
     paths:
       - 'plugins/_official/**'
       - 'scripts/bake-plugin-previews.mjs'
+      - '.github/workflows/bake-plugin-previews.yml' # so workflow edits re-trigger on the debug branch
   schedule:
     - cron: '0 18 * * *' # nightly self-healing full sweep
   workflow_dispatch: {}
@@ -66,12 +67,18 @@ jobs:
           PREVIEW_REMOTE: '1'
         run: |
           export CHROME="$(which google-chrome || which google-chrome-stable || which chromium-browser)"
+          echo "resolved CHROME=$CHROME"
           mkdir -p .tmp/plugin-previews
           # Seed with the committed manifest so the hash skip can reuse entries.
           cp data/plugin-previews/manifest.json .tmp/plugin-previews/manifest.json
-          node scripts/bake-plugin-previews.mjs --out .tmp/plugin-previews
+          # TEMP: on the debug branch only bake a few plugins for fast iteration.
+          LIMIT=""
+          if [ "${{ github.ref }}" != "refs/heads/main" ]; then LIMIT="--limit 3"; fi
+          node scripts/bake-plugin-previews.mjs --out .tmp/plugin-previews $LIMIT
+          echo "--- baked dir ---"; ls -la .tmp/plugin-previews
 
       - name: Upload clips to R2
+        if: ${{ github.ref == 'refs/heads/main' }} # branch debug runs skip publishing
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
@@ -84,6 +91,7 @@ jobs:
             --exclude manifest.json
 
       - name: Open manifest PR for review
+        if: ${{ github.ref == 'refs/heads/main' }} # branch debug runs skip publishing
         # The clips are already on R2; the manifest is version-pinned (it ships
         # with the build), so it must land on main through a reviewed PR rather
         # than a direct push to protected main. Fires only when a plugin actually
