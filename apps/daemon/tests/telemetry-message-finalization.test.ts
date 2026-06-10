@@ -5,6 +5,7 @@ import {
   composeChatUserRequestForAgent,
   createFinalizedMessageTelemetryReporter,
   shouldReportRunCompletedFromMessage,
+  shouldReportRunCompletionTelemetryFallbackStatus,
   telemetryPromptFromRunRequest,
 } from '../src/server.js';
 
@@ -42,6 +43,13 @@ describe('Langfuse message finalization gate', () => {
         { telemetryFinalized: true },
       ),
     ).toBe(false);
+  });
+
+  it('schedules terminal fallback only for failed and canceled runs', () => {
+    expect(shouldReportRunCompletionTelemetryFallbackStatus('failed')).toBe(true);
+    expect(shouldReportRunCompletionTelemetryFallbackStatus('canceled')).toBe(true);
+    expect(shouldReportRunCompletionTelemetryFallbackStatus('succeeded')).toBe(false);
+    expect(shouldReportRunCompletionTelemetryFallbackStatus('running')).toBe(false);
   });
 
   it('uses the explicit current prompt for telemetry instead of the full transcript', () => {

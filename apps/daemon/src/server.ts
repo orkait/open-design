@@ -3185,6 +3185,10 @@ export function createFinalizedMessageTelemetryReporter({
   };
 }
 
+export function shouldReportRunCompletionTelemetryFallbackStatus(status: unknown): boolean {
+  return status === 'failed' || status === 'canceled';
+}
+
 const CLOUDFLARE_PAGES_PROJECT_METADATA_KEY = 'cloudflarePagesProjectName';
 
 function cloudflarePagesDeploymentMetadata(projectName) {
@@ -5864,6 +5868,7 @@ export async function startServer({
     run: any;
     status: string;
   }) => {
+    if (!shouldReportRunCompletionTelemetryFallbackStatus(status)) return;
     const timer = setTimeout(() => {
       if (reportedRuns.has(run.id)) return;
       reportFinalizedMessage(
