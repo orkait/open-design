@@ -48,6 +48,19 @@ test("cross-app import check rejects another app's package name", () => {
   assert.ok(violations.every((violation) => violation.targetApp === "daemon"));
 });
 
+test("cross-app import check rejects another app's package name in require.resolve", () => {
+  const violations = collectCrossAppImportViolationsFromSource(
+    "apps/web/src/setup-runtime.ts",
+    "const daemonManifest = require.resolve('@open-design/daemon/package.json');",
+    registry,
+  );
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0]?.specifier, "@open-design/daemon/package.json");
+  assert.equal(violations[0]?.targetApp, "daemon");
+  assert.equal(violations[0]?.lineNumber, 1);
+});
+
 test("cross-app import check rejects cross-app imports from app-owned mjs entrypoints", () => {
   assert.equal(isCrossAppImportSourceFile("entry.js"), true);
   assert.equal(isCrossAppImportSourceFile("entry.cjs"), true);

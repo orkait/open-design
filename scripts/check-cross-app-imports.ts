@@ -129,6 +129,15 @@ function stringLiteralReference(node: ts.Node, sourceFile: ts.SourceFile): Impor
   return { index: node.getStart(sourceFile), specifier: node.text };
 }
 
+function isRequireResolveExpression(expression: ts.Expression): boolean {
+  return (
+    ts.isPropertyAccessExpression(expression) &&
+    ts.isIdentifier(expression.expression) &&
+    expression.expression.text === "require" &&
+    expression.name.text === "resolve"
+  );
+}
+
 function collectImportSpecifierReferences(repositoryPath: string, source: string): ImportSpecifierReference[] {
   const sourceFile = ts.createSourceFile(
     repositoryPath,
@@ -161,6 +170,8 @@ function collectImportSpecifierReferences(repositoryPath: string, source: string
       if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
         pushStringLiteral(firstArgument);
       } else if (ts.isIdentifier(node.expression) && node.expression.text === "require") {
+        pushStringLiteral(firstArgument);
+      } else if (isRequireResolveExpression(node.expression)) {
         pushStringLiteral(firstArgument);
       }
     }
