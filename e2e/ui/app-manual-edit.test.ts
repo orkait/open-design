@@ -169,6 +169,49 @@ async function selectPreviewElementThroughBridge(
   await expect(frame.locator(`${selector}[data-od-edit-selected="true"]`)).toHaveCount(1);
 }
 
+test('preview toolbar keeps share, download, comment, and zoom actions reachable', async ({ page }) => {
+  await routeMockAgents(page);
+  const projectId = await createEmptyProject(page, 'Preview toolbar smoke');
+  await seedHtmlArtifact(page, projectId, 'toolbar-preview.html', manualEditHtml());
+  await page.goto(`/projects/${projectId}/files/toolbar-preview.html`);
+  await openDesignFile(page, 'toolbar-preview.html');
+
+  await expect(page.getByTestId('artifact-preview-frame')).toBeVisible();
+  await expect(
+    page.getByRole('tablist', { name: 'View mode' }).getByRole('tab', { name: 'Preview' }),
+  ).toHaveAttribute('aria-selected', 'true');
+
+  await page.getByRole('button', { name: /^Share$/ }).click();
+  const shareMenu = page.locator('.share-menu-popover[role="menu"]');
+  await expect(shareMenu).toBeVisible();
+  await expect(shareMenu).toContainText('PUBLISH ONLINE');
+  await expect(shareMenu).toContainText('SOCIAL SHARE');
+  await page.keyboard.press('Escape');
+  await expect(shareMenu).toHaveCount(0);
+
+  await page.getByRole('button', { name: /^Download$/ }).click();
+  const downloadMenu = page.locator('.share-menu-popover[role="menu"]');
+  await expect(downloadMenu).toBeVisible();
+  await expect(downloadMenu.getByRole('menuitem', { name: /Export as PDF/ })).toBeVisible();
+  await expect(downloadMenu.getByRole('menuitem', { name: /Download as \.zip/ })).toBeVisible();
+  await expect(downloadMenu.getByRole('menuitem', { name: /Export as standalone HTML/ })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(downloadMenu).toHaveCount(0);
+
+  await page.getByRole('button', { name: /^Comment$/ }).click();
+  await expect(page.getByTestId('board-mode-toggle')).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: /^Comment$/ }).click();
+  await expect(page.getByTestId('board-mode-toggle')).toHaveAttribute('aria-pressed', 'false');
+
+  const zoomButton = page.locator('.viewer-toolbar-zoom .zoom-trigger');
+  await expect(zoomButton).toHaveText('100%');
+  await zoomButton.click();
+  const zoomMenu = page.locator('.zoom-menu-popover[role="menu"]');
+  await expect(zoomMenu).toBeVisible();
+  await zoomMenu.getByRole('menuitem', { name: '150%' }).click();
+  await expect(zoomButton).toHaveText('150%');
+});
+
 async function selectStyleRowInput(
   page: Page,
   frame: ReturnType<Page['frameLocator']>,

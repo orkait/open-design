@@ -1113,6 +1113,7 @@ function AssistantForkButton({
       type="button"
       className="assistant-copy-button od-tooltip"
       disabled={disabled}
+      data-testid="assistant-fork-button"
       data-tooltip={label}
       data-tooltip-placement="top"
       onClick={onFork}
@@ -1151,6 +1152,7 @@ function AssistantMarkdownCopyButton({ markdown }: { markdown: string }) {
     <button
       type="button"
       className="assistant-copy-button od-tooltip"
+      data-testid="assistant-copy-markdown"
       data-copied={copied ? "true" : "false"}
       data-tooltip={label}
       data-tooltip-placement="top"
@@ -1451,6 +1453,7 @@ function AssistantFeedback({
       <button
         type="button"
         className="assistant-feedback-button od-tooltip"
+        data-testid="assistant-feedback-positive"
         data-selected={selected === "positive" ? "true" : "false"}
         data-tooltip={t("assistant.feedbackPositive")}
         data-tooltip-placement="top"
@@ -1478,6 +1481,7 @@ function AssistantFeedback({
       <button
         type="button"
         className="assistant-feedback-button od-tooltip"
+        data-testid="assistant-feedback-negative"
         data-selected={selected === "negative" ? "true" : "false"}
         data-tooltip={t("assistant.feedbackNegative")}
         data-tooltip-placement="top"

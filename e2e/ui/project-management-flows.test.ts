@@ -63,6 +63,32 @@ const TAB_SKILLS = [
   skillSummary('image-skill', 'Image Skill', 'image', 'image', ['image']),
 ];
 
+const COMPOSER_PLUS_PLUGIN = {
+  id: 'composer-context-plugin',
+  title: 'Composer Context Plugin',
+  version: '1.0.0',
+  trust: 'bundled',
+  sourceKind: 'bundled',
+  source: '/tmp/composer-context-plugin',
+  fsPath: '/tmp/composer-context-plugin',
+  capabilitiesGranted: ['prompt:inject'],
+  installedAt: 0,
+  updatedAt: 0,
+  manifest: {
+    name: 'composer-context-plugin',
+    title: 'Composer Context Plugin',
+    version: '1.0.0',
+    description: 'Project composer context picker fixture.',
+    od: {
+      kind: 'scenario',
+      taskKind: 'new-generation',
+      useCase: {
+        query: 'Use the composer context plugin.',
+      },
+    },
+  },
+};
+
 test.beforeEach(async ({ page }) => {
   let appConfig = {
     onboardingCompleted: true,
@@ -392,13 +418,76 @@ test('[P0] @critical project detail header design system switch carries into the
   expect(runRequestBodies[0]?.designSystemId).toBe('editorial-noir');
 });
 
-test('[P0] @critical project detail avatar menu lets the user switch Local CLI agents and models', async ({ page }) => {
-  test.setTimeout(60_000);
+test('[P1] project detail design system picker stays inside the composer controls', async ({ page }) => {
   await page.goto('/');
-  await createProject(page, 'Header agent switch');
+  await createProject(page, 'Composer design system position');
   await expectWorkspaceReady(page);
 
-  const { menu, claudeButton } = await openAvatarAgentMenu(page);
+  const composer = page.getByTestId('chat-composer');
+  await expect(composer.getByTestId('project-ds-picker-trigger')).toBeVisible();
+});
+
+test('[P1] project detail composer working directory picker opens without leaving chat', async ({ page }) => {
+  await page.goto('/');
+  await createProject(page, 'Composer working directory picker');
+  await expectWorkspaceReady(page);
+
+  const composer = page.getByTestId('chat-composer');
+  const trigger = composer.getByTestId('working-dir-trigger');
+  await expect(trigger).toBeVisible();
+  await trigger.click();
+
+  await expect(composer.getByTestId('working-dir-panel')).toBeVisible();
+  await expect(composer.getByTestId('working-dir-pick')).toBeVisible();
+});
+
+test('[P1] project detail composer session mode switches between Design and Ask', async ({ page }) => {
+  await page.goto('/');
+  await createProject(page, 'Composer session mode switch');
+  await expectWorkspaceReady(page);
+
+  const composer = page.getByTestId('chat-composer');
+  const trigger = composer.getByTestId('session-mode-trigger');
+  await expect(trigger).toContainText(/Design/i);
+  await trigger.click();
+  await page.getByRole('menuitemradio', { name: /Ask mode/i }).click();
+  await expect(trigger).toContainText(/Ask/i);
+
+  await trigger.click();
+  await page.getByRole('menuitemradio', { name: /Design mode/i }).click();
+  await expect(trigger).toContainText(/Design/i);
+});
+
+test('[P1] project detail composer plus menu exposes attachment, connector, plugin, and MCP entries', async ({ page }) => {
+  await routeComposerPlusFixtures(page);
+  await page.goto('/');
+  await createProject(page, 'Composer plus context menu');
+  await expectWorkspaceReady(page);
+
+  const composer = page.getByTestId('chat-composer');
+  await composer.getByTestId('chat-plus-trigger').click();
+  await expect(page.getByTestId('composer-plus-attach')).toBeVisible();
+  await expect(page.getByTestId('composer-plus-connectors')).toBeVisible();
+  await expect(page.getByTestId('composer-plus-plugins')).toBeVisible();
+  await expect(page.getByTestId('composer-plus-mcp')).toBeVisible();
+
+  await page.getByTestId('composer-plus-connectors').click();
+  await expect(page.getByRole('menuitem', { name: /Figma Connector/i })).toBeVisible();
+
+  await page.getByTestId('composer-plus-plugins').click();
+  await expect(page.getByRole('menuitem', { name: /Composer Context Plugin/i })).toBeVisible();
+
+  await page.getByTestId('composer-plus-mcp').click();
+  await expect(page.getByRole('menuitem', { name: /Design Docs MCP/i })).toBeVisible();
+});
+
+test('[P0] @critical project detail composer agent menu lets the user switch Local CLI agents and models', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.goto('/');
+  await createProject(page, 'Composer agent switch');
+  await expectWorkspaceReady(page);
+
+  const { menu, claudeButton } = await openComposerAgentMenu(page);
   await expect(claudeButton).toBeVisible();
   await claudeButton.click();
 
@@ -411,7 +500,7 @@ test('[P0] @critical project detail avatar menu lets the user switch Local CLI a
   await expect(modelSelect).toContainText(/Sonnet/i);
 });
 
-test('[P0] project detail agent and model switches carry into the next daemon run request', async ({ page }) => {
+test('[P0] project detail composer agent and model switches carry into the next daemon run request', async ({ page }) => {
   test.setTimeout(60_000);
   const runRequestBodies: Array<Record<string, unknown>> = [];
   await page.route('**/api/runs', async (route) => {
@@ -432,10 +521,10 @@ test('[P0] project detail agent and model switches carry into the next daemon ru
   });
 
   await page.goto('/');
-  await createProject(page, 'Header agent switch run context');
+  await createProject(page, 'Composer agent switch run context');
   await expectWorkspaceReady(page);
 
-  const { menu, claudeButton } = await openAvatarAgentMenu(page);
+  const { menu, claudeButton } = await openComposerAgentMenu(page);
   await claudeButton.click();
   const modelSelect = menu.locator('.avatar-model-section [role=\"combobox\"]').first();
   await modelSelect.click();
@@ -628,6 +717,74 @@ test('[P1] project detail workspace keeps design file tabs and preview controls 
 
   await viewModeTabs.getByRole('tab', { name: 'Preview' }).click();
   await expect(artifactPreview(page)).toBeVisible();
+});
+
+test('[P1] project detail assistant completion actions support copy, fork, and feedback', async ({ page }) => {
+  await page.addInitScript(() => {
+    const store: string[] = [];
+    Object.defineProperty(window, '__copiedTexts', {
+      value: store,
+      configurable: true,
+    });
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        writeText(text: string) {
+          store.push(text);
+          return Promise.resolve();
+        },
+      },
+      configurable: true,
+    });
+  });
+
+  const { projectId, conversationId, assistantMessageId, assistantText } =
+    await seedProjectWithAssistantCompletion(page);
+
+  await page.goto(`/projects/${projectId}/conversations/${conversationId}`);
+  await expectWorkspaceReady(page);
+  await expect(page.getByText('Assistant completion actions fixture')).toBeVisible();
+
+  const copyButton = page.getByTestId('assistant-copy-markdown');
+  await expect(copyButton).toBeVisible();
+  await copyButton.click();
+  await expect(copyButton).toHaveAttribute('data-copied', 'true');
+  const copied = await page.evaluate(() => {
+    return (window as typeof window & { __copiedTexts?: string[] }).__copiedTexts ?? [];
+  });
+  expect(copied.at(-1)).toBe(assistantText);
+
+  const positive = page.getByTestId('assistant-feedback-positive');
+  const negative = page.getByTestId('assistant-feedback-negative');
+  await expect(positive).toBeVisible();
+  await expect(negative).toBeVisible();
+  await positive.click();
+  await expect(positive).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.assistant-feedback-reasons')).toBeVisible();
+  await negative.click();
+  await expect(negative).toHaveAttribute('aria-pressed', 'true');
+  await expect(positive).toHaveAttribute('aria-pressed', 'false');
+
+  const forkRequestPromise = page.waitForRequest((request) => {
+    return request.method() === 'POST'
+      && request.url().endsWith(`/api/projects/${projectId}/conversations`);
+  });
+  await page.getByTestId('assistant-fork-button').click();
+  const forkRequest = await forkRequestPromise;
+  const forkBody = forkRequest.postDataJSON() as {
+    forkAfterMessageId?: string;
+    seedFromConversationId?: string;
+    seedMessages?: Array<{ id?: string; role?: string }>;
+  };
+  expect(forkBody.seedFromConversationId).toBe(conversationId);
+  expect(forkBody.forkAfterMessageId).toBe(assistantMessageId);
+  expect(
+    forkBody.seedMessages?.some((message) => {
+      return message.id === assistantMessageId && message.role === 'assistant';
+    }),
+  ).toBe(true);
+  await expect
+    .poll(() => getProjectContextFromUrl(page).conversationId)
+    .not.toBe(conversationId);
 });
 
 test('[P0] project detail share menu copies the current share link for uploaded html artifacts', async ({ page }) => {
@@ -1366,6 +1523,85 @@ async function createProject(
   await page.goto(`/projects/${body.project.id}/conversations/${body.conversationId}`);
 }
 
+async function seedProjectWithAssistantCompletion(
+  page: Page,
+): Promise<{
+  projectId: string;
+  conversationId: string;
+  assistantMessageId: string;
+  assistantText: string;
+}> {
+  const projectId = `assistant-actions-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const projectResponse = await page.request.post('/api/projects', {
+    data: {
+      id: projectId,
+      name: 'Assistant Completion Actions',
+      skillId: null,
+      designSystemId: null,
+      metadata: {
+        kind: 'prototype',
+        nameSource: 'user',
+      },
+    },
+  });
+  expect(projectResponse.ok(), `create project: ${await projectResponse.text()}`).toBeTruthy();
+  const { conversationId } = (await projectResponse.json()) as { conversationId: string };
+
+  const fileResponse = await page.request.post(`/api/projects/${projectId}/files`, {
+    data: {
+      name: 'index.html',
+      content: '<!doctype html><html><body><main><h1>Assistant actions preview</h1></main></body></html>',
+      artifactManifest: {
+        version: 1,
+        kind: 'html',
+        title: 'index.html',
+        entry: 'index.html',
+        renderer: 'html',
+        exports: ['html'],
+      },
+    },
+  });
+  expect(fileResponse.ok(), `seed index.html: ${await fileResponse.text()}`).toBeTruthy();
+
+  const createdAt = Date.now() - 2_000;
+  const userMessageId = `u-${projectId}`;
+  const userResponse = await page.request.put(
+    `/api/projects/${projectId}/conversations/${conversationId}/messages/${userMessageId}`,
+    {
+      data: {
+        id: userMessageId,
+        role: 'user',
+        content: 'Create a tiny prototype.',
+        createdAt,
+      },
+    },
+  );
+  expect(userResponse.ok(), `seed user message: ${await userResponse.text()}`).toBeTruthy();
+
+  const assistantMessageId = `a-${projectId}`;
+  const assistantText = 'Assistant completion actions fixture.\n\nGenerated `index.html` for this turn.';
+  const assistantResponse = await page.request.put(
+    `/api/projects/${projectId}/conversations/${conversationId}/messages/${assistantMessageId}`,
+    {
+      data: {
+        id: assistantMessageId,
+        role: 'assistant',
+        content: assistantText,
+        runStatus: 'succeeded',
+        startedAt: createdAt + 500,
+        endedAt: createdAt + 1_500,
+        events: [
+          { kind: 'text', text: assistantText },
+        ],
+        createdAt: createdAt + 1_000,
+      },
+    },
+  );
+  expect(assistantResponse.ok(), `seed assistant message: ${await assistantResponse.text()}`).toBeTruthy();
+
+  return { projectId, conversationId, assistantMessageId, assistantText };
+}
+
 async function openNewProjectPanel(page: Page) {
   if (await page.getByTestId('new-project-panel').isVisible()) return;
   await ensureRailOpen(page);
@@ -1400,11 +1636,14 @@ async function openEntrySettingsDialog(page: Page, sectionName?: RegExp | string
   return settingsDialog;
 }
 
-async function openAvatarAgentMenu(page: Page): Promise<{
+async function openComposerAgentMenu(page: Page): Promise<{
   menu: Locator;
   claudeButton: Locator;
 }> {
-  const trigger = page.locator('.avatar-menu .avatar-agent-trigger');
+  const composer = page.getByTestId('chat-composer');
+  await expect(composer).toBeVisible();
+  const trigger = composer.locator('.avatar-menu .avatar-agent-trigger');
+  await expect(trigger).toBeVisible();
   await trigger.click();
   const menu = page.locator('.avatar-popover[role="dialog"]');
   await expect(menu).toBeVisible();
@@ -1424,6 +1663,56 @@ async function openAvatarAgentMenu(page: Page): Promise<{
   }
   await expect(claudeButton).toBeVisible({ timeout: 20_000 });
   return { menu, claudeButton };
+}
+
+async function routeComposerPlusFixtures(page: Page) {
+  await page.route('**/api/connectors', async (route) => {
+    await route.fulfill({
+      json: {
+        connectors: [
+          {
+            id: 'figma',
+            name: 'Figma Connector',
+            provider: 'Composio',
+            category: 'Design',
+            status: 'connected',
+            tools: [],
+          },
+        ],
+      },
+    });
+  });
+  await page.route('**/api/connectors/status', async (route) => {
+    await route.fulfill({
+      json: {
+        statuses: {
+          figma: { status: 'connected', accountLabel: 'Design Team' },
+        },
+      },
+    });
+  });
+  await page.route('**/api/connectors/discovery**', async (route) => {
+    await route.fulfill({ json: { connectors: [] } });
+  });
+  await page.route('**/api/plugins', async (route) => {
+    await route.fulfill({ json: { plugins: [COMPOSER_PLUS_PLUGIN] } });
+  });
+  await page.route('**/api/mcp/servers', async (route) => {
+    await route.fulfill({
+      json: {
+        servers: [
+          {
+            id: 'design-docs',
+            label: 'Design Docs MCP',
+            transport: 'stdio',
+            enabled: true,
+            command: 'npx',
+          },
+        ],
+        templates: [],
+      },
+    });
+  });
 }
 
 async function expectWorkspaceReady(page: Page) {
