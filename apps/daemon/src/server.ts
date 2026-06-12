@@ -13433,6 +13433,22 @@ export async function startServer({
       }
       send('agent', ev);
     };
+    const parseBufferedAntigravityGeminiJsonEventStream = () => {
+      if (
+        def.id !== 'antigravity' ||
+        plaintextStdoutBuffer.length === 0
+      ) {
+        return false;
+      }
+      const bufferedStdout = plaintextStdoutBuffer.join('');
+      if (!looksLikeGeminiJsonEventStream(bufferedStdout)) return false;
+      trackingSubstantiveOutput = true;
+      const handler = createJsonEventStreamHandler('gemini', sendAgentEvent);
+      handler.feed(bufferedStdout);
+      handler.flush();
+      plaintextStdoutBuffer.length = 0;
+      return true;
+    };
 
     if (def.streamFormat === 'claude-stream-json') {
       const claude = createClaudeStreamHandler((ev) => {
@@ -13701,6 +13717,7 @@ export async function startServer({
         markRpcCloseReason('fatal_rpc_error');
         return finishWithRetryDecision('failed', code ?? 1, signal ?? null);
       }
+      parseBufferedAntigravityGeminiJsonEventStream();
       if (agentStreamError) {
         markRpcCloseReason('stream_error');
         return finishWithRetryDecision('failed', code === 0 ? 1 : (code ?? 1), signal ?? null);
@@ -13872,22 +13889,6 @@ export async function startServer({
           { retryable: true },
         ));
         return finishWithRetryDecision('failed', 0, signal);
-      }
-      if (
-        def.id === 'antigravity' &&
-        plaintextStdoutBuffer.length > 0
-      ) {
-        const bufferedStdout = plaintextStdoutBuffer.join('');
-        if (looksLikeGeminiJsonEventStream(bufferedStdout)) {
-          const handler = createJsonEventStreamHandler('gemini', sendAgentEvent);
-          handler.feed(bufferedStdout);
-          handler.flush();
-          plaintextStdoutBuffer.length = 0;
-          if (agentStreamError) {
-            markRpcCloseReason('stream_error');
-            return finishWithRetryDecision('failed', code === 0 ? 1 : (code ?? 1), signal ?? null);
-          }
-        }
       }
       // ACP agents that don't shut down on stdin.end() (e.g. Devin for
       // Terminal) are forced to exit via SIGTERM from attachAcpSession after
