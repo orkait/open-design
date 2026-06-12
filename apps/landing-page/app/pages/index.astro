@@ -525,19 +525,37 @@ const matterRuntime = readFileSync(
         const enhanceLabDock = () => {
           const dock = document.querySelector('[data-lab-dock]');
           if (!dock) return;
-          // Idle-prefetch the lab clips (Video / HyperFrames tiles) so switching
-          // to them is instant rather than waiting 1-2s for the first byte. Runs
-          // at low priority after the page settles, so it never competes with
-          // the LCP. Done before the reduced-motion early-return below because
-          // the clips still play on click for those users.
+          // Prefetch the lab clips (Video / HyperFrames tiles) so switching to
+          // them is instant rather than waiting 1-2s for the first byte — but
+          // only once the lab section is about to scroll into view, not on page
+          // load. Most visitors who never reach the lab never pay the ~1.7MB.
+          // An IntersectionObserver with a one-viewport bottom margin fires the
+          // fetch just before the dock enters, then disconnects (one-shot).
+          // Falls back to an idle prefetch where IntersectionObserver is absent.
           (function prefetchLabVideos() {
             const srcs = Array.from(dock.querySelectorAll('[data-preview-video]'))
               .map((el) => el.getAttribute('data-preview-video'))
               .filter(Boolean);
             if (srcs.length === 0) return;
-            const run = () => srcs.forEach((src) => { try { fetch(src).catch(() => {}); } catch (e) {} });
-            if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 4000 });
-            else setTimeout(run, 2500);
+            let done = false;
+            const run = () => {
+              if (done) return;
+              done = true;
+              srcs.forEach((src) => { try { fetch(src).catch(() => {}); } catch (e) {} });
+            };
+            if ('IntersectionObserver' in window) {
+              const io = new IntersectionObserver((entries) => {
+                if (entries.some((entry) => entry.isIntersecting)) {
+                  io.disconnect();
+                  run();
+                }
+              }, { rootMargin: '0px 0px 100% 0px' });
+              io.observe(dock);
+            } else if ('requestIdleCallback' in window) {
+              requestIdleCallback(run, { timeout: 4000 });
+            } else {
+              setTimeout(run, 2500);
+            }
           })();
           if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
           const items = Array.from(dock.querySelectorAll('[data-dock-item]'));

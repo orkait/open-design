@@ -921,13 +921,24 @@ export default function Page({
                 <h2 className='display'>{t.ctaTitle}</h2>
                 <p className='lead'>{home.cta.lead}</p>
                 <div className='cta-actions'>
-                  <a className='btn btn-primary' href={REPO_RELEASES} {...ext}>
+                  {/* Same direct-download behaviour as the hero CTA: the
+                      `enhanceDownloadCta` enhancer detects the OS, rewrites this
+                      to the matching release asset (.dmg/.exe) with a download
+                      attr, and appends the platform chip. Falls back to the
+                      /download/ picker when detection or the API is unavailable
+                      — not the raw GitHub releases list. */}
+                  <a
+                    className='btn btn-primary'
+                    href={href('/download/')}
+                    data-download-cta
+                    data-download-chip-target
+                  >
                     <span className='arrow'>{iconDownload}</span>
-                    Download
+                    {home.hero.download}
                   </a>
                   <a className='btn btn-primary' href={REPO} {...ext}>
                     <span className='arrow'>{<RemixIcon glyph={RI.github} />}</span>
-                    Star on GitHub
+                    {home.cta.star}
                   </a>
                 </div>
               </div>
