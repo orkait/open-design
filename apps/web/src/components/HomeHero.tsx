@@ -2779,6 +2779,7 @@ function homeHeroChipLabel(chipId: string, t: ReturnType<typeof useT>): string {
     case 'image': return t('homeHero.chip.image');
     case 'video': return t('homeHero.chip.video');
     case 'hyperframes': return t('homeHero.chip.hyperframes');
+    case 'social-card': return 'Social card';
     case 'audio': return t('homeHero.chip.audio');
     case 'create-plugin': return t('homeHero.chip.createPlugin');
     case 'figma': return t('homeHero.chip.figma');
@@ -2791,6 +2792,7 @@ function homeHeroChipTitle(chip: HomeHeroChip, t: ReturnType<typeof useT>): stri
   switch (chip.id) {
     case 'live-artifact': return t('homeHero.chip.liveArtifactHint');
     case 'hyperframes': return t('homeHero.chip.hyperframesHint');
+    case 'social-card': return 'Create Xiaohongshu/Rednote carousels and WeChat cover pairs from articles, notes, screenshots, or photos.';
     case 'create-plugin': return t('homeHero.chip.createPluginHint');
     case 'figma': return t('homeHero.chip.figmaHint');
     case 'template': return t('homeHero.chip.templateHint');
@@ -2883,6 +2885,8 @@ export function pluginMatchesExampleChip(record: InstalledPluginRecord, chipId: 
       return (has('image') || hasPart('image-template')) && !hasPart('video', 'audio', 'live-artifact');
     case 'video':
       return (has('video') || hasPart('video-template')) && !hasPart('hyperframes', 'audio');
+    case 'social-card':
+      return has('social-card') || hasPart('social-card', 'xiaohongshu', 'rednote', 'wechat-cover');
     case 'audio':
       // Exclude video / HyperFrames templates that merely carry an
       // `audio-reactive` tag (substring-matched by hasPart('audio')): their
@@ -3075,6 +3079,7 @@ function pluginPresetArtifactLabel(chipId: string, kind: PromptLocaleKind): stri
       case 'image': return '一张图片';
       case 'video': return '一段视频';
       case 'hyperframes': return '一段 HyperFrames 动效视频';
+      case 'social-card': return '一套社交图文卡片';
       case 'audio': return '一段音频';
       default: return '一个设计产物';
     }
@@ -3086,6 +3091,7 @@ function pluginPresetArtifactLabel(chipId: string, kind: PromptLocaleKind): stri
       case 'image': return '画像';
       case 'video': return '動画';
       case 'hyperframes': return 'HyperFrames のモーション動画';
+      case 'social-card': return 'ソーシャルカード';
       case 'audio': return 'オーディオ';
       default: return 'デザイン成果物';
     }
@@ -3096,6 +3102,7 @@ function pluginPresetArtifactLabel(chipId: string, kind: PromptLocaleKind): stri
     case 'image': return 'image';
     case 'video': return 'video';
     case 'hyperframes': return 'HyperFrames motion video';
+    case 'social-card': return 'social card package';
     case 'audio': return 'audio clip';
     default: return 'design artifact';
   }
@@ -3881,6 +3888,8 @@ function briefForChipId(chipId: string): Record<string, string> {
       return { artifact_type: 'video', style: 'cinematic, high-quality, on-brand' };
     case 'hyperframes':
       return { artifact_type: 'motion graphic / animated sequence', style: 'cinematic, polished transitions' };
+    case 'social-card':
+      return { artifact_type: 'social card package', platform: 'Xiaohongshu / Rednote or WeChat', style: 'Guizang editorial or Swiss' };
     case 'audio':
       return { artifact_type: 'audio', style: 'professional, polished, brand-appropriate' };
     default:

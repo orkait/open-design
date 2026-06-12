@@ -33,7 +33,8 @@ import type { IconName } from '../Icon';
 // independently of the default-binding mapping.
 export type ChipScenarioPluginId =
   | DefaultScenarioPluginId
-  | 'example-hyperframes';
+  | 'example-hyperframes'
+  | 'example-guizang-social-card';
 
 export type ChipAction =
   | {
@@ -171,6 +172,23 @@ export const HOME_HERO_CHIPS: ReadonlyArray<HomeHeroChip> = [
         subject: 'a short product reveal',
         style: 'cinematic, high-quality, on-brand',
         aspect: '16:9',
+      },
+    },
+  },
+  {
+    id: 'social-card',
+    label: 'Social card',
+    icon: 'share',
+    group: 'create',
+    hint: 'Create Xiaohongshu/Rednote carousels and WeChat cover pairs from articles, notes, screenshots, or photos.',
+    action: {
+      kind: 'apply-scenario',
+      pluginId: 'example-guizang-social-card',
+      projectKind: 'image',
+      inputs: {
+        platform: 'xiaohongshu',
+        styleMode: 'auto',
+        pageCount: '5-9',
       },
     },
   },

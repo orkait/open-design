@@ -1,0 +1,131 @@
+{
+  "$schema": "https://open-design.ai/schemas/plugin.v1.json",
+  "specVersion": "1.0.0",
+  "name": "example-guizang-social-card",
+  "title": "Guizang Social Card",
+  "title_i18n": {
+    "en": "Guizang Social Card",
+    "zh-CN": "归藏社交图文卡"
+  },
+  "version": "0.1.0",
+  "description": "Wrapper plugin for the Guizang Social Card workflow: Xiaohongshu/Rednote carousel image sets and WeChat 21:9 + 1:1 cover pairs from articles, notes, screenshots, or photos.",
+  "description_i18n": {
+    "en": "Wrapper plugin for the Guizang Social Card workflow: Xiaohongshu/Rednote carousel image sets and WeChat 21:9 + 1:1 cover pairs from articles, notes, screenshots, or photos.",
+    "zh-CN": "归藏社交图文卡工作流包装插件：把文章、笔记、截图或照片生成小红书/Rednote 图文组图，以及公众号 21:9 + 1:1 封面对。"
+  },
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Open Design",
+    "url": "https://github.com/nexu-io"
+  },
+  "homepage": "https://github.com/op7418/guizang-social-card-skill",
+  "tags": [
+    "example",
+    "third-party",
+    "social-card",
+    "xiaohongshu",
+    "rednote",
+    "wechat-cover",
+    "carousel",
+    "image",
+    "editorial",
+    "swiss",
+    "guizang"
+  ],
+  "compat": {
+    "agentSkills": [
+      {
+        "path": "./SKILL.md"
+      }
+    ]
+  },
+  "od": {
+    "kind": "scenario",
+    "taskKind": "new-generation",
+    "mode": "image",
+    "platform": "social",
+    "scenario": "marketing",
+    "surface": "web",
+    "upstream": "https://github.com/op7418/guizang-social-card-skill",
+    "preview": {
+      "type": "html",
+      "entry": "./example.html",
+      "motion": "static"
+    },
+    "useCase": {
+      "query": {
+        "en": "Use the Guizang Social Card workflow to turn my source content into a {{platform}} social card package. Choose Editorial or Swiss style based on the content, plan each page as one clear visual argument, create single-file HTML for review, and render PNG outputs when ready.",
+        "zh-CN": "使用「归藏社交图文卡」工作流，把我的素材做成 {{platform}} 社交图文卡。根据内容选择电子杂志风或瑞士国际主义风，每页只表达一个清晰观点，先生成单文件 HTML 供检查，确认后渲染 PNG 输出。"
+      },
+      "exampleOutputs": [
+        {
+          "path": "./example.html",
+          "title": "Guizang Social Card",
+          "title_i18n": {
+            "en": "Guizang Social Card",
+            "zh-CN": "归藏社交图文卡"
+          }
+        }
+      ]
+    },
+    "context": {
+      "skills": [
+        {
+          "path": "./SKILL.md"
+        }
+      ],
+      "assets": [
+        "./example.html"
+      ]
+    },
+    "inputs": [
+      {
+        "name": "platform",
+        "type": "select",
+        "required": false,
+        "label": "Platform",
+        "options": [
+          "xiaohongshu",
+          "wechat-cover-pair",
+          "social-card"
+        ],
+        "default": "xiaohongshu"
+      },
+      {
+        "name": "styleMode",
+        "type": "select",
+        "required": false,
+        "label": "Style mode",
+        "options": [
+          "auto",
+          "editorial",
+          "swiss"
+        ],
+        "default": "auto"
+      },
+      {
+        "name": "pageCount",
+        "type": "string",
+        "required": false,
+        "label": "Page count",
+        "placeholder": "5-9",
+        "default": "5-9"
+      }
+    ],
+    "pipeline": {
+      "stages": [
+        {
+          "id": "generate",
+          "atoms": [
+            "file-write",
+            "live-artifact"
+          ]
+        }
+      ]
+    },
+    "capabilities": [
+      "prompt:inject",
+      "fs:write"
+    ]
+  }
+}

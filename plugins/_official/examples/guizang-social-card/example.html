@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Guizang Social Card Preview</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #f4efe6;
+        --ink: #161412;
+        --muted: #6f675c;
+        --rule: rgba(22, 20, 18, 0.18);
+        --accent: #2147ff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #e8e4dc;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: var(--ink);
+      }
+
+      .preview {
+        display: flex;
+        align-items: center;
+        gap: 28px;
+        padding: 32px;
+      }
+
+      .poster {
+        position: relative;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 20% 8%, rgba(33, 71, 255, 0.14), transparent 34%),
+          linear-gradient(135deg, rgba(255, 255, 255, 0.62), transparent 42%),
+          var(--paper);
+        border: 1px solid rgba(22, 20, 18, 0.16);
+        box-shadow: 0 22px 70px rgba(30, 28, 24, 0.18);
+      }
+
+      .poster::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background-image:
+          linear-gradient(var(--rule) 1px, transparent 1px),
+          linear-gradient(90deg, var(--rule) 1px, transparent 1px);
+        background-size: 48px 48px;
+        opacity: 0.2;
+      }
+
+      .poster--xhs {
+        width: 270px;
+        height: 360px;
+        padding: 28px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .poster--wide {
+        width: 420px;
+        height: 180px;
+        padding: 24px 30px;
+        display: grid;
+        grid-template-columns: 1fr 138px;
+        gap: 24px;
+      }
+
+      .kicker {
+        font-size: 10px;
+        line-height: 1;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--accent);
+        font-weight: 700;
+      }
+
+      h1,
+      h2 {
+        margin: 0;
+        font-family: Georgia, "Times New Roman", "Noto Serif SC", serif;
+        letter-spacing: 0;
+      }
+
+      h1 {
+        margin-top: 18px;
+        max-width: 11ch;
+        font-size: 42px;
+        line-height: 0.92;
+      }
+
+      h2 {
+        font-size: 28px;
+        line-height: 0.96;
+      }
+
+      .summary {
+        margin-top: auto;
+        display: grid;
+        gap: 10px;
+      }
+
+      .line {
+        border-top: 1px solid var(--rule);
+        padding-top: 8px;
+        font-size: 11px;
+        line-height: 1.35;
+        color: var(--muted);
+      }
+
+      .index {
+        position: absolute;
+        right: 24px;
+        bottom: 20px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 10px;
+        color: var(--muted);
+      }
+
+      .photo {
+        align-self: stretch;
+        border: 1px solid var(--rule);
+        background:
+          linear-gradient(145deg, rgba(33, 71, 255, 0.78), rgba(22, 20, 18, 0.78)),
+          linear-gradient(90deg, #d8c6a3, #f6efe1);
+      }
+
+      .wide-copy {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-width: 0;
+      }
+
+      .wide-copy p {
+        margin: 14px 0 0;
+        max-width: 34ch;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      @media (max-width: 760px) {
+        .preview {
+          flex-direction: column;
+          transform: scale(0.9);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="preview" aria-label="Guizang Social Card preview">
+      <section class="poster poster--xhs">
+        <div class="kicker">Rednote / 3:4</div>
+        <h1>One idea per card</h1>
+        <div class="summary">
+          <div class="line">Editorial rhythm for story posts.</div>
+          <div class="line">Swiss grid for product and data explainers.</div>
+        </div>
+        <div class="index">01 / 06</div>
+      </section>
+
+      <section class="poster poster--wide">
+        <div class="wide-copy">
+          <div>
+            <div class="kicker">WeChat cover pair</div>
+            <h2>Long cover plus square share card</h2>
+            <p>Composed as a matched system instead of cropping one ratio into another.</p>
+          </div>
+          <div class="line">HTML first. PNG export after review.</div>
+        </div>
+        <div class="photo" aria-hidden="true"></div>
+      </section>
+    </main>
+  </body>
+</html>
