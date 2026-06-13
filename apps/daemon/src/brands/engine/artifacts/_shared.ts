@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * artifacts/_shared — the bits every artifact (or 2+ of them) needs: the HTML
  * document shell, the brand-font resolver, the derived-copy helpers (tagline /

@@ -6903,6 +6903,9 @@ export async function startServer({
   registerBrandRoutes(app, {
     brandsRoot: BRANDS_DIR,
     userDesignSystemsRoot: USER_DESIGN_SYSTEMS_DIR,
+    projectsRoot: PROJECTS_DIR,
+    db,
+    randomId,
   });
 
   app.get('/api/design-systems', async (_req, res) => {

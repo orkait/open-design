@@ -1431,6 +1431,13 @@
   padding: 14px 18px 18px;
 }
 
+.memory-action-modal button.primary,
+.memory-action-modal button.ghost {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
 .memory-advanced-modal-body {
   gap: 10px;
 }
@@ -1698,8 +1705,7 @@
 }
 
 .memory-source-tabs button {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  display: flex;
   align-items: center;
   gap: 10px;
   min-height: 58px;
@@ -1754,6 +1760,7 @@
 .memory-source-tab-copy {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 2px;
   min-width: 0;
 }
@@ -2183,8 +2190,14 @@
 }
 
 .memory-source-action {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+  gap: 6px;
   min-width: 136px;
+  min-height: 40px;
+  line-height: 1;
+  text-align: center;
   white-space: nowrap;
 }
 

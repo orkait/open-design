@@ -4879,6 +4879,9 @@ async function runBrandCreate(rest) {
   let buffer = '';
   let exitCode = 0;
   let createdId = null;
+  let projectId = null;
+  let designSystemId = null;
+  let systemFiles = [];
   let finalBrand = null;
   let errorMessage = null;
   const events = [];
@@ -4905,6 +4908,7 @@ async function runBrandCreate(rest) {
       switch (data.event) {
         case 'created':
           createdId = data.id ?? createdId;
+          projectId = data.projectId ?? projectId;
           break;
         case 'phase':
           if (!flags.json && STAGE_LABELS[data.phase]) {
@@ -4925,12 +4929,18 @@ async function runBrandCreate(rest) {
           }
           break;
         case 'system':
+          projectId = data.projectId ?? projectId;
+          designSystemId = data.designSystemId ?? designSystemId;
+          systemFiles = Array.isArray(data.files) ? data.files : systemFiles;
           if (!flags.json && data.ok === false && data.error) {
             process.stderr.write(`[brand] design-system warning: ${data.error}\n`);
           }
           break;
         case 'brand':
           createdId = data.id ?? createdId;
+          projectId = data.projectId ?? projectId;
+          designSystemId = data.designSystemId ?? designSystemId;
+          systemFiles = Array.isArray(data.files) ? data.files : systemFiles;
           finalBrand = data.brand ?? finalBrand;
           break;
         case 'error':
@@ -4948,6 +4958,8 @@ async function runBrandCreate(rest) {
       process.stdout.write(JSON.stringify({
         ok: false,
         id: createdId,
+        projectId,
+        designSystemId,
         error: errorMessage ?? 'extraction failed',
         events,
       }, null, 2) + '\n');
@@ -4961,6 +4973,9 @@ async function runBrandCreate(rest) {
     process.stdout.write(JSON.stringify({
       ok: true,
       id: createdId,
+      projectId,
+      designSystemId,
+      files: systemFiles,
       brand: finalBrand,
     }, null, 2) + '\n');
     return;
@@ -5008,6 +5023,10 @@ async function runBrandGet(rest) {
   console.log(`domain\t${brandDomainForCli(meta.sourceUrl)}`);
   console.log(`status\t${meta.status ?? '-'}`);
   if (meta.designSystemId) console.log(`designSystem\t${meta.designSystemId}`);
+  if (meta.projectId) console.log(`project\t${meta.projectId}`);
+  if (Array.isArray(meta.systemFiles) && meta.systemFiles.length > 0) {
+    console.log(`files\t${meta.systemFiles.join(' ')}`);
+  }
   if (brand?.tagline) console.log(`tagline\t${brand.tagline}`);
   if (Array.isArray(brand?.colors) && brand.colors.length > 0) {
     console.log(`colors\t${brand.colors.map((c) => c.hex).join(' ')}`);

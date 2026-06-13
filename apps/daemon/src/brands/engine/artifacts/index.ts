@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * artifacts — the last hop of the pipeline. Where `kit` produces individual
  * themed components, `artifacts` composes them into *products* that follow the

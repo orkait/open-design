@@ -108,6 +108,7 @@ export type TrackingProjectKind =
   // `hyperframes-html` as a secondary anchor.
   | 'hyperframes'
   | 'audio'
+  | 'brand'
   // `design_system` covers DS-as-project runs (creation + regeneration).
   // The dashboard reads it on run_created / run_finished to split the
   // DS generation funnel from regular artifact runs.
@@ -2992,7 +2993,7 @@ export function sessionModeToTracking(
 }
 
 // Code `ProjectKind` from packages/contracts/src/api/projects.ts:
-//   'prototype' | 'deck' | 'template' | 'other' | 'image' | 'video' | 'audio'
+//   'prototype' | 'deck' | 'template' | 'other' | 'brand' | 'image' | 'video' | 'audio'
 // Discriminates HyperFrames from generic AI video. A HyperFrames project is
 // stored as `kind: 'video'` with `metadata.videoModel === 'hyperframes-html'`
 // (the local HTML→MP4 renderer); callers pass that videoModel through so the
@@ -3021,6 +3022,8 @@ export function projectKindToTracking(
       return videoModel === HYPERFRAMES_VIDEO_MODEL ? 'hyperframes' : 'video';
     case 'audio':
       return 'audio';
+    case 'brand':
+      return 'brand';
     case 'live-artifact':
     case 'live_artifact':
       return 'live_artifact';

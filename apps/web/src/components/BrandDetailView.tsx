@@ -82,6 +82,11 @@ export function BrandDetailView({ brandId }: Props) {
     }
   }, [meta?.designSystemId, busy]);
 
+  const openProject = useCallback(() => {
+    if (!meta?.projectId) return;
+    navigate({ kind: 'project', projectId: meta.projectId, fileName: null, conversationId: null });
+  }, [meta?.projectId]);
+
   const deleteBrand = useCallback(async () => {
     if (busy) return;
     const ok = window.confirm(`Delete "${name}"? This removes the brand and its design system.`);
@@ -161,6 +166,16 @@ export function BrandDetailView({ brandId }: Props) {
               >
                 {t('brandDetail.useInChat')}
               </Button>
+              {meta?.projectId ? (
+                <Button
+                  variant="ghost"
+                  onClick={openProject}
+                  disabled={busy}
+                  data-testid="brand-detail-open-project"
+                >
+                  Open project
+                </Button>
+              ) : null}
               <Button
                 variant="ghost"
                 onClick={() => void deleteBrand()}

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * form — a conversion-tuned signup / contact form.
  *

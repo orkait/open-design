@@ -59,9 +59,18 @@ export function BrandsTab() {
   }, []);
 
   const handleCreated = useCallback(
-    (brandId: string) => {
+    (brandId: string, projectId?: string) => {
       setModalOpen(false);
       void refresh();
+      if (projectId) {
+        try {
+          window.sessionStorage.setItem(`od:auto-send-first:${projectId}`, '1');
+        } catch {
+          // Private-mode storage failures should not block navigation.
+        }
+        navigate({ kind: 'project', projectId, fileName: null, conversationId: null });
+        return;
+      }
       openBrand(brandId);
     },
     [refresh, openBrand],

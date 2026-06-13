@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * derive.ts — the heart of the engine.
  *

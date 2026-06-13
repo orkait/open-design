@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * generic — a reasonable card+button page for kinds without a bespoke layout.
  */

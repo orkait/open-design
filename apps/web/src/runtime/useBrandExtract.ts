@@ -32,6 +32,8 @@ export interface BrandExtractState {
   phase: BrandExtractPhase;
   /** Brand id, available from the `created` event onward. */
   brandId: string | null;
+  /** Backing brand project id, available once the daemon has reserved it. */
+  projectId: string | null;
   /** Latest prefetch step / detail line, for a live status under stage 1. */
   progress: string | null;
   /** Counts from `prefetch-done`, shown as "{colors} colors · …". */
@@ -40,6 +42,8 @@ export interface BrandExtractState {
   preview: Brand | null;
   /** The `user:<id>` design-system id once the system phase succeeds. */
   designSystemId: string | null;
+  /** Generated brand system files, relative to the backing brand system dir. */
+  systemFiles: string[];
   /** Human-readable failure reason when `phase === 'error'`. */
   error: string | null;
 }
@@ -47,10 +51,12 @@ export interface BrandExtractState {
 const INITIAL_STATE: BrandExtractState = {
   phase: 'idle',
   brandId: null,
+  projectId: null,
   progress: null,
   measured: null,
   preview: null,
   designSystemId: null,
+  systemFiles: [],
   error: null,
 };
 
@@ -94,6 +100,7 @@ export function useBrandExtract(): UseBrandExtract {
           return {
             ...prev,
             brandId: event.id,
+            projectId: event.projectId ?? prev.projectId,
             phase: prev.phase === 'idle' ? 'prefetch' : prev.phase,
           };
         case 'phase':
@@ -118,6 +125,8 @@ export function useBrandExtract(): UseBrandExtract {
             ...prev,
             phase: event.ok ? 'system' : 'error',
             designSystemId: event.designSystemId ?? prev.designSystemId,
+            projectId: event.projectId ?? prev.projectId,
+            systemFiles: event.files ?? prev.systemFiles,
             error: event.ok ? prev.error : event.error ?? 'Failed to register design system',
           };
         case 'brand':
@@ -125,6 +134,9 @@ export function useBrandExtract(): UseBrandExtract {
             ...prev,
             phase: 'done',
             brandId: event.id,
+            projectId: event.projectId ?? prev.projectId,
+            designSystemId: event.designSystemId ?? prev.designSystemId,
+            systemFiles: event.files ?? prev.systemFiles,
             preview: event.brand,
           };
         case 'error':

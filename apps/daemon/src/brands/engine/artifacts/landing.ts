@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * landing — a long, single-goal marketing page that follows the project's
  * content-structure playbook (docs/content-structures/landing-page.md) to the

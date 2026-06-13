@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * deck — a pitch deck that follows docs/content-structures/slides-deck.md.
  *

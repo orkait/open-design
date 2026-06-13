@@ -13,12 +13,14 @@ import type { Application, Request, Response } from 'express';
 
 import type { BrandExtractEvent } from '@open-design/contracts';
 
+import type { insertProject } from './db.js';
 import {
   extractBrand,
   listBrandSummaries,
   readBrandDetail,
   removeBrand,
   resolveBrandLogoPath,
+  type ExtractBrandOptions,
 } from './brands/index.js';
 
 export interface BrandRoutesDeps {
@@ -28,6 +30,12 @@ export interface BrandRoutesDeps {
    *  `user:<id>` design system, so selecting a brand in the composer reuses
    *  the existing design-system apply flow. */
   userDesignSystemsRoot: string;
+  /** `<dataDir>/projects` — backing brand-generation projects. */
+  projectsRoot?: string;
+  /** Shared app database used to register the backing project. */
+  db?: Parameters<typeof insertProject>[0];
+  /** Optional id factory; defaults inside the brand engine when omitted. */
+  randomId?: () => string;
 }
 
 /** Content-Type for the served primary logo, keyed by file extension. */
@@ -42,7 +50,7 @@ const LOGO_CONTENT_TYPES: Record<string, string> = {
 };
 
 export function registerBrandRoutes(app: Application, deps: BrandRoutesDeps): void {
-  const { brandsRoot, userDesignSystemsRoot } = deps;
+  const { brandsRoot, userDesignSystemsRoot, projectsRoot, db, randomId } = deps;
 
   // GET /api/brands — list every stored brand as a summary.
   app.get('/api/brands', (_req: Request, res: Response) => {
@@ -77,13 +85,17 @@ export function registerBrandRoutes(app: Application, deps: BrandRoutesDeps): vo
     };
 
     try {
-      await extractBrand({
+      const extractOptions: ExtractBrandOptions = {
         url,
         brandsRoot,
         userDesignSystemsRoot,
         onEvent: send,
         signal: controller.signal,
-      });
+      };
+      if (projectsRoot) extractOptions.projectsRoot = projectsRoot;
+      if (db) extractOptions.db = db;
+      if (randomId) extractOptions.randomId = randomId;
+      await extractBrand(extractOptions);
     } catch (err) {
       // extractBrand is contracted never to throw, but guard anyway so a
       // surprise rejection still reaches the client as an error frame.

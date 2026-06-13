@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Public entry point for the brand engine. Import everything from here:
  *

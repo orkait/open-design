@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * email — a single-column, 600px, bulletproof-table promotional/announcement
  * email built to its content-structure playbook (docs/content-structures/

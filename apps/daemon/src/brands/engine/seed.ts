@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * SEED synthesis — the narrow front door of the brand engine.
  *

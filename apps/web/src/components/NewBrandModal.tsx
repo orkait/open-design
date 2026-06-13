@@ -9,7 +9,7 @@ import styles from './NewBrandModal.module.css';
 interface Props {
   open: boolean;
   onClose: () => void;
-  onCreated: (brandId: string) => void;
+  onCreated: (brandId: string, projectId?: string) => void;
 }
 
 // The three visible stages map onto the daemon's extraction phases:
@@ -93,13 +93,14 @@ export function NewBrandModal({ open, onClose, onCreated }: Props) {
   useEffect(() => {
     if (state.phase === 'done' && state.brandId) {
       const id = state.brandId;
+      const projectId = state.projectId ?? undefined;
       const timer = window.setTimeout(() => {
-        onCreated(id);
+        onCreated(id, projectId);
       }, 650);
       return () => window.clearTimeout(timer);
     }
     return undefined;
-  }, [state.phase, state.brandId, onCreated]);
+  }, [state.phase, state.brandId, state.projectId, onCreated]);
 
   const handleClose = useCallback(() => {
     if (running) return; // don't allow dismissing mid-extraction by backdrop/esc
