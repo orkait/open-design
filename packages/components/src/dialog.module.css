@@ -12,7 +12,7 @@
   animation: dialog-backdrop-fade-in 160ms ease-out;
 }
 
-.dialog {
+:where(.dialog) {
   background: var(--bg-elevated);
   -webkit-app-region: no-drag;
   border-radius: var(--radius-lg);

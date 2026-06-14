@@ -67,6 +67,28 @@ describe('Dialog', () => {
     expect(panel?.classList.contains('modal')).toBe(false);
   });
 
+  it('keeps caller variant sizing overrides ahead of shared dialog defaults', () => {
+    const variantStyles = document.createElement('style');
+    variantStyles.textContent = '.modal-rename { width: 420px; gap: 14px; }';
+    document.head.insertBefore(variantStyles, document.head.firstChild);
+
+    try {
+      const { container } = render(
+        <Dialog className="modal-rename">
+          <h2>Rename design</h2>
+        </Dialog>,
+      );
+
+      const panel = container.querySelector('.modal-rename') as HTMLElement;
+      const panelStyles = getComputedStyle(panel);
+
+      expect(panelStyles.width).toBe('420px');
+      expect(panelStyles.gap).toBe('14px');
+    } finally {
+      variantStyles.remove();
+    }
+  });
+
   it('supports sectioned layouts with shared header/body/footer primitives', () => {
     const { container } = render(
       <Dialog layout="sectioned" ariaLabelledBy="dialog-title">
