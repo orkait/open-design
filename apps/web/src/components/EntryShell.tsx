@@ -1122,7 +1122,16 @@ function OnboardingView({
   // today: card absent for several seconds, then it pops in). Once detection
   // settles, the card is either real (amrAgent) or omitted.
   const amrDetecting = !amrAgent && (agentsLoading || amrRefreshPending);
-  const showAmrCloudOption = amrAgent !== null;
+  // AMR is Open Design's officially recommended cloud runtime and the hero
+  // card on the runtime step. While availability is still undecided we show
+  // the skeleton; once detection settles we always render the real card —
+  // never unmount it. Previously the card was gated on a locally-detected
+  // `vela` runtime, so on machines where the probe never surfaced AMR the
+  // card showed its skeleton through the cold-start stream and the one-shot
+  // re-probe, then vanished ("loads forever then disappears"). When AMR is
+  // genuinely unavailable the card degrades to its fallback content and its
+  // sign-in flow, which already surfaces the daemon error gracefully.
+  const showAmrCloudOption = amrAgent !== null || !amrDetecting;
   const amrSignedIn = amrStatus?.loggedIn === true;
   const amrSelectedAndSignedOut = runtime === 'amr' && !amrSignedIn;
   const amrAgentChoice = config.agentModels?.amr ?? {};

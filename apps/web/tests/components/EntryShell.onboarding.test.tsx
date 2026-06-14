@@ -296,7 +296,10 @@ describe('EntryShell onboarding Open Design AMR runtime', () => {
       onRefreshAgents: vi.fn(() => [cliAgent()]),
     });
 
-    expect(screen.queryByRole('button', { name: /Open Design AMR/i })).toBeNull();
+    // The AMR card still renders (it never vanishes after detection), but it
+    // is not the auto-selected default when the runtime is unavailable.
+    const amrCloud = await screen.findByRole('button', { name: /Open Design AMR/i });
+    expect(amrCloud.getAttribute('aria-pressed')).toBe('false');
     fireEvent.click(screen.getByRole('button', { name: /Local coding agent/i }));
 
     await waitFor(() => {
@@ -1034,6 +1037,29 @@ describe('EntryShell onboarding Open Design AMR runtime', () => {
     renderOnboarding({ agentsLoading: false });
 
     expect(screen.getByRole('button', { name: /Open Design AMR/i })).toBeTruthy();
+    expect(document.querySelector('.onboarding-view__card--skeleton')).toBeNull();
+  });
+
+  it('keeps the AMR cloud card visible after detection settles without surfacing AMR', async () => {
+    // Regression: on machines where the local `vela` probe never surfaces
+    // AMR, the card showed its loading skeleton through the cold-start stream
+    // and the one-shot re-probe, then vanished entirely — the user saw it
+    // "load forever then disappear". AMR is the officially recommended cloud
+    // runtime, so once detection settles the card must stay visible (degrading
+    // to its fallback content and sign-in flow) instead of being unmounted.
+    globalThis.fetch = vi.fn(async () =>
+      jsonResponse({ loggedIn: false, profile: 'prod', user: null, configPath: '/x' }),
+    ) as typeof fetch;
+    renderOnboarding({
+      agents: [cliAgent()],
+      agentsLoading: false,
+      onRefreshAgents: vi.fn(() => [cliAgent()]),
+    });
+
+    // The skeleton resolves once the re-probe settles, but the card itself
+    // does not disappear — the real, selectable AMR card takes its place.
+    const amrCloud = await screen.findByRole('button', { name: /Open Design AMR/i });
+    expect(amrCloud).toBeTruthy();
     expect(document.querySelector('.onboarding-view__card--skeleton')).toBeNull();
   });
 
