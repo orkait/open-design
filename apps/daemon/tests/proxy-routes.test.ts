@@ -1,9 +1,11 @@
 import type http from 'node:http';
+import Database from 'better-sqlite3';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeAll, afterAll, describe, expect, it, vi } from 'vitest';
 import * as platform from '@open-design/platform';
+import { listMediaTasksByProject } from '../src/media-tasks.js';
 import { startServer } from '../src/server.js';
 import { AIHUBMIX_APP_CODE } from '../src/aihubmix.js';
 
@@ -266,6 +268,88 @@ describe('API proxy routes', () => {
     expect(finalBody).toContain('"stage":"file_written"');
     expect(finalBody).toContain('Done: ![generated image]');
     expect(finalBody).toContain('event: end');
+  });
+
+  it('routes default image projects through media tasks even when the chat host is not OpenAI', async () => {
+    const configDir = await mkdtemp(path.join(tmpdir(), 'od-default-image-project-'));
+    process.env.OD_MEDIA_CONFIG_DIR = configDir;
+    await mkdir(configDir, { recursive: true });
+    await writeFile(
+      path.join(configDir, 'media-config.json'),
+      JSON.stringify({ openai: { apiKey: 'stored-openai-key' } }),
+      'utf8',
+    );
+
+    const projectId = 'default-image-project';
+    const projectResponse = await realFetch(`${baseUrl}/api/projects`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        id: projectId,
+        name: 'Default image project',
+        metadata: { kind: 'image', imageModel: 'gpt-image-2', imageAspect: '1:1' },
+      }),
+    });
+    expect(projectResponse.status).toBe(200);
+
+    const pngBase64 = Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString('base64');
+    const fetchMock = vi.fn(async (input: FetchInput, init?: FetchInit) => {
+      const url = String(input);
+      if (url.startsWith(baseUrl)) return realFetch(input, init);
+      if (url === 'https://api.openai.com/v1/images/generations') {
+        const imageBody = JSON.parse(String(init?.body));
+        expect(imageBody.model).toBe('gpt-image-2');
+        expect(imageBody.prompt).toBe('Render a quiet premium studio still life.');
+        return new Response(
+          JSON.stringify({ data: [{ b64_json: pngBase64 }] }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await realFetch(`${baseUrl}/api/proxy/openai/stream`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        baseUrl: 'https://openrouter.ai/api/v1',
+        apiKey: 'sk-openrouter',
+        model: 'openai/gpt-4',
+        projectId,
+        messages: [{ role: 'user', content: 'Render a quiet premium studio still life.' }],
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain('![generated image](/api/projects/default-image-project/files/');
+    expect(body).toContain('event: end');
+
+    const dataDir = process.env.OD_DATA_DIR;
+    if (!dataDir) throw new Error('OD_DATA_DIR is required for proxy route tests');
+    const sqlite = new Database(path.join(dataDir, 'app.sqlite'));
+    let fileName = '';
+    try {
+      const tasks = listMediaTasksByProject(sqlite, projectId, { includeTerminal: true });
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0]).toMatchObject({
+        projectId,
+        status: 'done',
+        surface: 'image',
+        model: 'gpt-image-2',
+      });
+      fileName = String((tasks[0]?.file as { name?: string } | null)?.name || '');
+    } finally {
+      sqlite.close();
+    }
+
+    expect(fileName).toBeTruthy();
+    const fileResponse = await realFetch(
+      `${baseUrl}/api/projects/${encodeURIComponent(projectId)}/files/${encodeURIComponent(fileName)}`,
+    );
+    expect(fileResponse.status).toBe(200);
+    expect((await fileResponse.arrayBuffer()).byteLength).toBeGreaterThan(0);
   });
 
   it.each([

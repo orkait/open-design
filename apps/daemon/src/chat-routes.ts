@@ -58,12 +58,19 @@ const FEEDBACK_REASON_ALLOWLIST: ReadonlySet<string> = new Set([
   'other',
 ]);
 
-export interface RegisterChatRoutesDeps extends RouteDeps<'db' | 'design' | 'http' | 'chat' | 'agents' | 'critique' | 'validation' | 'lifecycle' | 'paths' | 'telemetry'> {}
+export interface RegisterChatRoutesDeps extends RouteDeps<'db' | 'design' | 'http' | 'chat' | 'agents' | 'critique' | 'validation' | 'lifecycle' | 'paths' | 'telemetry' | 'media'> {}
 
 export function registerChatRoutes(app: Express, ctx: RegisterChatRoutesDeps) {
   const { db, design } = ctx;
   const { sendApiError, createSseResponse } = ctx.http;
   const { submitToolResultToRun } = ctx.chat;
+  const {
+    generateMedia,
+    createMediaTask,
+    persistMediaTask,
+    appendTaskProgress,
+    notifyTaskWaiters,
+  } = ctx.media;
   const { testProviderConnection, testAgentConnection, getAgentDef, isKnownModel, sanitizeCustomModel, listProviderModels } = ctx.agents;
   const {
     handleCritiqueArtifact,
@@ -1037,6 +1044,10 @@ export function registerChatRoutes(app: Express, ctx: RegisterChatRoutesDeps) {
       projectRow?.metadata && typeof projectRow.metadata === 'object' && projectRow.metadata.kind === 'image'
         ? projectRow.metadata
         : null;
+    const imageProjectAspect =
+      typeof imageProjectMetadata?.imageAspect === 'string' && imageProjectMetadata.imageAspect.trim()
+        ? imageProjectMetadata.imageAspect.trim()
+        : undefined;
     const imageProjectModel = typeof imageProjectMetadata?.imageModel === 'string' && imageProjectMetadata.imageModel.trim()
       ? imageProjectMetadata.imageModel.trim()
       : imageProjectMetadata
@@ -1058,8 +1069,8 @@ export function registerChatRoutes(app: Express, ctx: RegisterChatRoutesDeps) {
             upstreamBaseUrl: appendVersionedApiPath(baseUrl, ''),
             requestInit: {},
             mediaModel: imageProjectModel,
-            ...(typeof imageProjectMetadata.imageAspect === 'string' && imageProjectMetadata.imageAspect.trim()
-              ? { defaultAspect: imageProjectMetadata.imageAspect.trim() }
+            ...(imageProjectAspect
+              ? { defaultAspect: imageProjectAspect }
               : {}),
             seedProviderId: 'openai',
           }
@@ -1084,6 +1095,67 @@ export function registerChatRoutes(app: Express, ctx: RegisterChatRoutesDeps) {
         openAIImageToolContext.requestInit = requestInit;
       }
       sse.send('start', { model });
+      if (imageProjectMetadata && !openAIImageToolContext) {
+        const prompt = extractLatestUserText(messages);
+        if (!prompt) {
+          sendProxyError(
+            sse,
+            'Image projects require a user prompt before media generation can start.',
+            { code: 'BAD_REQUEST' },
+          );
+          return sse.end();
+        }
+
+        const taskId = crypto.randomUUID();
+        const task = createMediaTask(taskId, projectId!, {
+          surface: 'image',
+          model: imageProjectModel,
+        });
+        task.status = 'running';
+        persistMediaTask(task);
+        appendTaskProgress(task, 'chat proxy routed image project through media pipeline');
+
+        try {
+          const result = await generateMedia({
+            projectRoot: ctx.paths.PROJECT_ROOT,
+            projectsRoot: ctx.paths.PROJECTS_DIR,
+            projectId: projectId!,
+            surface: 'image',
+            model: imageProjectModel!,
+            prompt,
+            ...(imageProjectAspect ? { aspect: imageProjectAspect } : {}),
+            onProgress: (line: string) => appendTaskProgress(task, line),
+            requestInit,
+          });
+          task.status = 'done';
+          task.file = result;
+          task.endedAt = Date.now();
+          persistMediaTask(task);
+          notifyTaskWaiters(task);
+          sse.send('delta', {
+            delta: `![generated image](/api/projects/${encodeURIComponent(projectId!)}/files/${encodeURIComponent(result.name)})`,
+          });
+          sse.send('end', {});
+          return sse.end();
+        } catch (err: any) {
+          task.status = 'failed';
+          task.error = {
+            message: String(err?.message || err),
+            status: typeof err?.status === 'number' ? err.status : 400,
+            code: typeof err?.code === 'string' ? err.code : undefined,
+          };
+          task.endedAt = Date.now();
+          persistMediaTask(task);
+          notifyTaskWaiters(task);
+          sendProxyError(sse, task.error.message, {
+            code: task.error.code || 'MEDIA_GENERATION_FAILED',
+            details: task.error.message,
+            retryable: task.error.status === 429 || task.error.status >= 500,
+          });
+          return sse.end();
+        }
+      }
+
       const runOpenAITurn = async (messagesForTurn: any[]): Promise<TurnResult> => {
         let slowStartTimer: ReturnType<typeof setTimeout> | null = null;
         const clearSlowStartTimer = () => {
@@ -1620,6 +1692,29 @@ One function tool is wired through for this Image project: \`generate_image\`.
 - Do NOT claim tools are unavailable.
 - After the tool returns a URL, reply with markdown image syntax so the result renders inline: \`![generated image](url)\`.
 `;
+  }
+
+  function extractLatestUserText(messages: unknown): string {
+    if (!Array.isArray(messages)) return '';
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      const message = messages[index];
+      if (!message || typeof message !== 'object') continue;
+      if ((message as { role?: unknown }).role !== 'user') continue;
+      const content = (message as { content?: unknown }).content;
+      if (typeof content === 'string' && content.trim()) return content.trim();
+      if (!Array.isArray(content)) continue;
+      const parts = content
+        .map((part) => {
+          if (typeof part === 'string') return part.trim();
+          if (!part || typeof part !== 'object') return '';
+          return typeof (part as { text?: unknown }).text === 'string'
+            ? (part as { text: string }).text.trim()
+            : '';
+        })
+        .filter(Boolean);
+      if (parts.length > 0) return parts.join('\n\n');
+    }
+    return '';
   }
 
   // Shared shape for the two BYOK tool-loop chat proxies (SenseAudio,

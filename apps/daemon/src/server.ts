@@ -15314,6 +15314,13 @@ export async function startServer({
     design,
     http: httpDeps,
     paths: pathDeps,
+    media: {
+      generateMedia,
+      createMediaTask: (taskId, projectId, info) => createMediaTask(db, taskId, projectId, info),
+      persistMediaTask: (task) => persistMediaTask(db, task),
+      appendTaskProgress: (task, line) => appendTaskProgress(db, task, line),
+      notifyTaskWaiters: (task) => notifyTaskWaiters(db, task),
+    },
     chat: { startChatRun, submitToolResultToRun },
     agents: agentDeps,
     critique: critiqueDeps,
