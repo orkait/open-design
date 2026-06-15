@@ -31,11 +31,11 @@ export type AggregatedActionResult = {
 export type AggregateResult = {
   actions: AggregatedActionResult[];
   passed: boolean;
-  runner: {
+  owned: {
     provider: string;
     runId: string;
   };
-  hosted: {
+  github: {
     provider: string;
     runId: string;
   };
@@ -103,8 +103,8 @@ function resultByAction(result: WorkflowResult): Map<string, WorkflowActionResul
   return map;
 }
 
-function summarizeAction(action: string, runner: WorkflowResult, hosted: WorkflowResult): AggregatedActionResult {
-  const candidates = [runner, hosted]
+function summarizeAction(action: string, owned: WorkflowResult, github: WorkflowResult): AggregatedActionResult {
+  const candidates = [owned, github]
     .flatMap((result) => result.actions
       .filter((entry) => entry.action === action)
       .map((entry) => ({ ...entry, provider: result.provider })));
@@ -131,34 +131,34 @@ function summarizeAction(action: string, runner: WorkflowResult, hosted: Workflo
   };
 }
 
-export function aggregateWorkflowResults(runner: WorkflowResult, hosted: WorkflowResult): AggregateResult {
-  const runnerActions = resultByAction(runner);
-  const hostedActions = resultByAction(hosted);
-  const actions = [...new Set([...runnerActions.keys(), ...hostedActions.keys()])].sort();
-  const actionResults = actions.map((action) => summarizeAction(action, runner, hosted));
+export function aggregateWorkflowResults(owned: WorkflowResult, github: WorkflowResult): AggregateResult {
+  const ownedActions = resultByAction(owned);
+  const githubActions = resultByAction(github);
+  const actions = [...new Set([...ownedActions.keys(), ...githubActions.keys()])].sort();
+  const actionResults = actions.map((action) => summarizeAction(action, owned, github));
   return {
     actions: actionResults,
-    hosted: {
-      provider: hosted.provider,
-      runId: hosted.runId,
+    github: {
+      provider: github.provider,
+      runId: github.runId,
     },
     passed: actionResults.every((action) => action.passed),
-    runner: {
-      provider: runner.provider,
-      runId: runner.runId,
+    owned: {
+      provider: owned.provider,
+      runId: owned.runId,
     },
     schemaVersion: 1,
   };
 }
 
 export async function aggregateWorkflowResultFiles(options: {
-  hostedResultsPath: string;
+  githubResultsPath: string;
   outPath?: string;
-  runnerResultsPath: string;
+  ownedResultsPath: string;
 }): Promise<AggregateResult> {
-  const runner = parseWorkflowResult(JSON.parse(await readFile(resolve(options.runnerResultsPath), "utf8")));
-  const hosted = parseWorkflowResult(JSON.parse(await readFile(resolve(options.hostedResultsPath), "utf8")));
-  const result = aggregateWorkflowResults(runner, hosted);
+  const owned = parseWorkflowResult(JSON.parse(await readFile(resolve(options.ownedResultsPath), "utf8")));
+  const github = parseWorkflowResult(JSON.parse(await readFile(resolve(options.githubResultsPath), "utf8")));
+  const result = aggregateWorkflowResults(owned, github);
   if (options.outPath != null) {
     await writeFile(resolve(options.outPath), `${JSON.stringify(result, null, 2)}\n`, "utf8");
   }

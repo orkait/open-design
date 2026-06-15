@@ -645,8 +645,8 @@ function resultByAction(result) {
   }
   return map;
 }
-function summarizeAction(action, runner, hosted) {
-  const candidates = [runner, hosted].flatMap((result) => result.actions.filter((entry) => entry.action === action).map((entry) => ({ ...entry, provider: result.provider })));
+function summarizeAction(action, owned, github) {
+  const candidates = [owned, github].flatMap((result) => result.actions.filter((entry) => entry.action === action).map((entry) => ({ ...entry, provider: result.provider })));
   const realCandidates = candidates.filter((entry) => entry.kind === "real");
   const successes = realCandidates.filter((entry) => entry.status === "success");
   if (successes.length > 0) {
@@ -669,29 +669,29 @@ function summarizeAction(action, runner, hosted) {
     reason: "no real result available"
   };
 }
-function aggregateWorkflowResults(runner, hosted) {
-  const runnerActions = resultByAction(runner);
-  const hostedActions = resultByAction(hosted);
-  const actions = [.../* @__PURE__ */ new Set([...runnerActions.keys(), ...hostedActions.keys()])].sort();
-  const actionResults = actions.map((action) => summarizeAction(action, runner, hosted));
+function aggregateWorkflowResults(owned, github) {
+  const ownedActions = resultByAction(owned);
+  const githubActions = resultByAction(github);
+  const actions = [.../* @__PURE__ */ new Set([...ownedActions.keys(), ...githubActions.keys()])].sort();
+  const actionResults = actions.map((action) => summarizeAction(action, owned, github));
   return {
     actions: actionResults,
-    hosted: {
-      provider: hosted.provider,
-      runId: hosted.runId
+    github: {
+      provider: github.provider,
+      runId: github.runId
     },
     passed: actionResults.every((action) => action.passed),
-    runner: {
-      provider: runner.provider,
-      runId: runner.runId
+    owned: {
+      provider: owned.provider,
+      runId: owned.runId
     },
     schemaVersion: 1
   };
 }
 async function aggregateWorkflowResultFiles(options) {
-  const runner = parseWorkflowResult(JSON.parse(await readFile(resolve(options.runnerResultsPath), "utf8")));
-  const hosted = parseWorkflowResult(JSON.parse(await readFile(resolve(options.hostedResultsPath), "utf8")));
-  const result = aggregateWorkflowResults(runner, hosted);
+  const owned = parseWorkflowResult(JSON.parse(await readFile(resolve(options.ownedResultsPath), "utf8")));
+  const github = parseWorkflowResult(JSON.parse(await readFile(resolve(options.githubResultsPath), "utf8")));
+  const result = aggregateWorkflowResults(owned, github);
   if (options.outPath != null) {
     await writeFile(resolve(options.outPath), `${JSON.stringify(result, null, 2)}
 `, "utf8");
@@ -1019,7 +1019,7 @@ function nonEmpty(value) {
   return value == null || value.length === 0 ? void 0 : value;
 }
 function resolveToolCiProfile(value) {
-  if (value === "ci-base" || value === "ci-playwright" || value === "nix-capable" || value === "hosted" || value === "runner" || value === "local") {
+  if (value === "ci-base" || value === "ci-playwright" || value === "nix-capable" || value === "github" || value === "owned" || value === "local") {
     return value;
   }
   if (value == null || value.length === 0) return "local";
@@ -1066,7 +1066,7 @@ function resolveToolCiConfig(options = {}, env = process.env) {
     workspaceRoot
   });
   return {
-    capabilitiesPath: resolve4(options.capabilitiesPath ?? nonEmpty(env.OD_CI_CAPABILITIES) ?? path.join(workspaceRoot, "tools", "ci", "fixtures", "capabilities.hosted.json")),
+    capabilitiesPath: resolve4(options.capabilitiesPath ?? nonEmpty(env.OD_CI_CAPABILITIES) ?? path.join(workspaceRoot, "tools", "ci", "fixtures", "capabilities.github.json")),
     eventName: options.eventName ?? nonEmpty(env.OD_CI_EVENT_NAME) ?? nonEmpty(env.GITHUB_EVENT_NAME) ?? "unknown",
     headSha: options.headSha ?? nonEmpty(env.OD_CI_HEAD_SHA) ?? nonEmpty(env.CI_GATE_HEAD_SHA) ?? nonEmpty(env.GITHUB_SHA) ?? "unknown",
     manifestPath: resolve4(options.manifestPath ?? nonEmpty(env.OD_CI_ATOM_MANIFEST) ?? path.join(workspaceRoot, "tools", "ci", "atoms.json")),
@@ -1652,16 +1652,16 @@ async function execute(options) {
   }
 }
 async function aggregate(options) {
-  if (options.runnerResults == null || options.runnerResults.length === 0) {
-    throw new Error("aggregate requires --runner-results <path>");
+  if (options.ownedResults == null || options.ownedResults.length === 0) {
+    throw new Error("aggregate requires --owned-results <path>");
   }
-  if (options.hostedResults == null || options.hostedResults.length === 0) {
-    throw new Error("aggregate requires --hosted-results <path>");
+  if (options.githubResults == null || options.githubResults.length === 0) {
+    throw new Error("aggregate requires --github-results <path>");
   }
   const result = await aggregateWorkflowResultFiles({
-    hostedResultsPath: options.hostedResults,
+    githubResultsPath: options.githubResults,
     outPath: options.out,
-    runnerResultsPath: options.runnerResults
+    ownedResultsPath: options.ownedResults
   });
   if (options.json === true || options.out == null) {
     printJson(result);
@@ -1686,7 +1686,7 @@ cli.command("select-atoms", "Select atoms from manifest and provider capabilitie
 cli.command("execute", "Execute selected CI atoms").option("--manifest <path>", "Atom manifest path", { default: "tools/ci/atoms.json" }).option("--selection <path>", "Atom selection JSON path").action((options) => {
   void execute(options);
 });
-cli.command("aggregate", "Aggregate CI atom results").option("--runner-results <path>", "Runner ci-results.json path").option("--hosted-results <path>", "Hosted ci-results.json path").option("--out <path>", "Write aggregate JSON to a file").option("--json", "Print JSON").action((options) => {
+cli.command("aggregate", "Aggregate CI atom results").option("--owned-results <path>", "Owned ci-results.json path").option("--github-results <path>", "GitHub-hosted ci-results.json path").option("--out <path>", "Write aggregate JSON to a file").option("--json", "Print JSON").action((options) => {
   void aggregate(options);
 });
 cli.help();

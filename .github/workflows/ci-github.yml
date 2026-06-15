@@ -2,21 +2,12 @@ name: ci-github
 
 on:
   workflow_dispatch:
-    inputs:
-      mode:
-        description: GitHub-hosted CI mode
-        required: true
-        type: choice
-        default: nix
-        options:
-          - nix
-          - full
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-github-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'nix' }}
+  group: ci-github-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -25,7 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
-      CI_GATE_GITHUB_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'nix' }}
       CI_GATE_HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       CI_GATE_PLAYWRIGHT_INSTALL_FLAGS: --with-deps chromium
       COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
@@ -47,7 +37,7 @@ jobs:
             accept-flake-config = true
 
       - name: Run GitHub-hosted CI protocol
-        run: .github/workflows/scripts/ci-gate.sh --provider github --mode "$CI_GATE_GITHUB_MODE" --results-path ".tmp/workflows/ci-gate/runs/${GITHUB_RUN_ID}/ci-results.json"
+        run: .github/workflows/scripts/ci-gate.sh --provider github --mode default --results-path ".tmp/workflows/ci-gate/runs/${GITHUB_RUN_ID}/ci-results.json"
 
       - name: Upload GitHub-hosted CI results
         if: ${{ always() }}

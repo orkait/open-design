@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "provider": "runner",
+  "provider": "owned",
   "capabilities": ["node", "pnpm", "playwright", "chromium"],
   "unavailable": [
     {
       "capability": "nix",
-      "reason": "runner-nix-substrate-not-proven"
+      "reason": "nix-capability-unavailable"
     }
   ]
 }

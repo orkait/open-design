@@ -27,28 +27,22 @@ while [ "$#" -gt 0 ]; do
 done
 
 if [ -z "$provider" ] || [ -z "$mode" ]; then
-  echo "usage: $0 --provider <owned|github> --mode <default|nix|full> [--results-path <path>]" >&2
+  echo "usage: $0 --provider <owned|github> --mode <default> [--results-path <path>]" >&2
   exit 2
 fi
 
 case "$provider" in
-  owned)
-    if [ "$mode" != "default" ]; then
-      echo "owned only supports --mode default" >&2
-      exit 2
-    fi
-    ;;
-  github)
-    if [ "$mode" != "nix" ] && [ "$mode" != "full" ]; then
-      echo "github only supports --mode nix|full" >&2
-      exit 2
-    fi
+  owned | github)
     ;;
   *)
     echo "unknown provider: $provider" >&2
     exit 2
     ;;
 esac
+if [ "$mode" != "default" ]; then
+  echo "only --mode default is supported" >&2
+  exit 2
+fi
 
 event_name="${GITHUB_EVENT_NAME:-unknown}"
 head_sha="${CI_GATE_HEAD_SHA:-${GITHUB_SHA:-unknown}}"
@@ -80,42 +74,13 @@ node <<'EOF'
 const fs = require("node:fs");
 
 const provider = process.env.PROVIDER;
-const mode = process.env.MODE;
 const manifest = JSON.parse(fs.readFileSync(process.env.MANIFEST_PATH, "utf8"));
 
-function isSelected(atom) {
-  if (provider === "owned") return atom.name !== "nix";
-  if (provider === "github" && mode === "nix") return atom.name === "nix";
-  if (provider === "github" && mode === "full") return true;
-  throw new Error(`unsupported provider/mode: ${provider}/${mode}`);
+if (provider !== "owned" && provider !== "github") {
+  throw new Error(`unsupported provider: ${provider}`);
 }
 
-function unavailableFor(atom) {
-  if (provider === "owned" && atom.name === "nix") {
-    return {
-      atom: atom.name,
-      missingCapabilities: ["nix"],
-      reason: "owned-nix-substrate-not-proven",
-      status: "unavailable",
-    };
-  }
-  return {
-    atom: atom.name,
-    missingCapabilities: [],
-    reason: `${provider}-${mode}-not-selected`,
-    status: "unavailable",
-  };
-}
-
-const selectedAtoms = [];
-const unavailable = [];
-for (const atom of manifest.atoms) {
-  if (isSelected(atom)) {
-    selectedAtoms.push(atom.name);
-  } else {
-    unavailable.push(unavailableFor(atom));
-  }
-}
+const selectedAtoms = manifest.atoms.map((atom) => atom.name);
 
 fs.writeFileSync(
   process.env.SELECTION_PATH,
@@ -123,7 +88,7 @@ fs.writeFileSync(
     provider,
     schemaVersion: 1,
     selectedAtoms,
-    unavailable,
+    unavailable: [],
   }, null, 2)}\n`,
 );
 EOF

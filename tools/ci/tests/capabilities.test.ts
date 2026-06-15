@@ -39,7 +39,7 @@ const manifest = parseAtomManifest({
 test("selectAtoms selects atoms whose requirements are available", () => {
   const selection = selectAtoms(manifest, parseProviderCapabilities({
     schemaVersion: 1,
-    provider: "hosted",
+    provider: "github",
     capabilities: ["node", "pnpm", "nix"],
   }));
 
@@ -50,12 +50,12 @@ test("selectAtoms selects atoms whose requirements are available", () => {
 test("selectAtoms marks missing requirements unavailable before shared execution", () => {
   const selection = selectAtoms(manifest, parseProviderCapabilities({
     schemaVersion: 1,
-    provider: "runner",
+    provider: "owned",
     capabilities: ["node", "pnpm"],
     unavailable: [
       {
         capability: "nix",
-        reason: "runner-nix-substrate-not-proven",
+        reason: "nix-capability-unavailable",
       },
     ],
   }));
@@ -65,7 +65,7 @@ test("selectAtoms marks missing requirements unavailable before shared execution
     {
       atom: "nix",
       missingCapabilities: ["nix"],
-      reason: "runner-nix-substrate-not-proven",
+      reason: "nix-capability-unavailable",
       status: "unavailable",
     },
   ]);
@@ -75,7 +75,7 @@ test("parseProviderCapabilities rejects unknown capabilities", () => {
   assert.throws(
     () => parseProviderCapabilities({
       schemaVersion: 1,
-      provider: "runner",
+      provider: "owned",
       capabilities: ["node", "docker"],
     }),
     /capabilities.1 must be one of/,

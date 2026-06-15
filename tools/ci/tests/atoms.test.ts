@@ -122,7 +122,7 @@ test("parseAtomManifest rejects provider-shaped script paths", () => {
           name: "bad",
           requires: ["node", "pnpm"],
           resultRequired: true,
-          script: "../runner-only.sh",
+          script: "../outside-actions.sh",
           setup: "pnpm-workspace",
           timeoutSeconds: 600,
         },

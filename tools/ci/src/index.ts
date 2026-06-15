@@ -24,10 +24,10 @@ type ExecuteOptions = {
 };
 
 type AggregateOptions = {
-  hostedResults?: string;
+  githubResults?: string;
   json?: boolean;
   out?: string;
-  runnerResults?: string;
+  ownedResults?: string;
 };
 
 function printJson(value: unknown): void {
@@ -92,16 +92,16 @@ async function execute(options: ExecuteOptions): Promise<void> {
 }
 
 async function aggregate(options: AggregateOptions): Promise<void> {
-  if (options.runnerResults == null || options.runnerResults.length === 0) {
-    throw new Error("aggregate requires --runner-results <path>");
+  if (options.ownedResults == null || options.ownedResults.length === 0) {
+    throw new Error("aggregate requires --owned-results <path>");
   }
-  if (options.hostedResults == null || options.hostedResults.length === 0) {
-    throw new Error("aggregate requires --hosted-results <path>");
+  if (options.githubResults == null || options.githubResults.length === 0) {
+    throw new Error("aggregate requires --github-results <path>");
   }
   const result = await aggregateWorkflowResultFiles({
-    hostedResultsPath: options.hostedResults,
+    githubResultsPath: options.githubResults,
     outPath: options.out,
-    runnerResultsPath: options.runnerResults,
+    ownedResultsPath: options.ownedResults,
   });
   if (options.json === true || options.out == null) {
     printJson(result);
@@ -151,8 +151,8 @@ cli
 
 cli
   .command("aggregate", "Aggregate CI atom results")
-  .option("--runner-results <path>", "Runner ci-results.json path")
-  .option("--hosted-results <path>", "Hosted ci-results.json path")
+  .option("--owned-results <path>", "Owned ci-results.json path")
+  .option("--github-results <path>", "GitHub-hosted ci-results.json path")
   .option("--out <path>", "Write aggregate JSON to a file")
   .option("--json", "Print JSON")
   .action((options: AggregateOptions) => {

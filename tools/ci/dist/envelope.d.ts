@@ -1,5 +1,5 @@
 export declare const WORKSPACE_ROOT: string;
-export type ToolCiProfile = "ci-base" | "ci-playwright" | "nix-capable" | "hosted" | "runner" | "local";
+export type ToolCiProfile = "ci-base" | "ci-playwright" | "nix-capable" | "github" | "owned" | "local";
 export type ToolCiSourceMode = "direct" | "copy";
 export type ToolCiRoots = {
     artifactsRoot: string;

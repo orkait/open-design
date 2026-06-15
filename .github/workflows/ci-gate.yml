@@ -57,7 +57,7 @@ jobs:
       OWNED_RUN_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.owned_run_id || '' }}
       GITHUB_RUN_ID_OVERRIDE: ${{ github.event_name == 'workflow_dispatch' && inputs.github_run_id || '' }}
       OWNED_WORKFLOW: ci-owned
-      GITHUB_HOSTED_WORKFLOW: ci-github
+      GITHUB_CI_WORKFLOW: ci-github
     steps:
       - name: Checkout
         uses: actions/checkout@v6.0.2
@@ -130,8 +130,7 @@ jobs:
             --method POST \
             -H "Accept: application/vnd.github+json" \
             "repos/${{ github.repository }}/actions/workflows/ci-github.yml/dispatches" \
-            -f ref='${{ github.ref_name }}' \
-            -f inputs[mode]='nix'
+            -f ref='${{ github.ref_name }}'
 
       - name: Aggregate CI results
         run: node --experimental-strip-types .github/workflows/scripts/ci/aggregate-results.ts

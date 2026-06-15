@@ -88,7 +88,7 @@ test("executeAtoms runs selected atom scripts and writes result files", async ()
           {
             atom: "nix",
             missingCapabilities: ["nix"],
-            reason: "runner-nix-substrate-not-proven",
+            reason: "nix-capability-unavailable",
             status: "unavailable",
           },
         ],
@@ -120,7 +120,7 @@ test("executeAtoms runs selected atom scripts and writes result files", async ()
     assert.equal(nixMetadata.domain, "nix");
     assert.equal(nixMetadata.key, "flake");
     assert.equal(nixMetadata.status, "not-run");
-    assert.match(await readFile(join(resultsDir, "logs", "nix", "flake", "stderr.log"), "utf8"), /runner-nix-substrate-not-proven/);
+    assert.match(await readFile(join(resultsDir, "logs", "nix", "flake", "stderr.log"), "utf8"), /nix-capability-unavailable/);
     assert.match(await readFile(join(resultsDir, "ci-results.json"), "utf8"), /"schemaVersion": 1/);
     const actionsJsonl = await readFile(join(resultsDir, "actions.jsonl"), "utf8");
     assert.match(actionsJsonl, /"metadataPath":"logs\/workspace\/guard\/metadata.json"/);

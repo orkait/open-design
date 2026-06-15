@@ -24,21 +24,21 @@ export type AggregatedActionResult = {
 export type AggregateResult = {
     actions: AggregatedActionResult[];
     passed: boolean;
-    runner: {
+    owned: {
         provider: string;
         runId: string;
     };
-    hosted: {
+    github: {
         provider: string;
         runId: string;
     };
     schemaVersion: 1;
 };
 export declare function parseWorkflowResult(value: unknown): WorkflowResult;
-export declare function aggregateWorkflowResults(runner: WorkflowResult, hosted: WorkflowResult): AggregateResult;
+export declare function aggregateWorkflowResults(owned: WorkflowResult, github: WorkflowResult): AggregateResult;
 export declare function aggregateWorkflowResultFiles(options: {
-    hostedResultsPath: string;
+    githubResultsPath: string;
     outPath?: string;
-    runnerResultsPath: string;
+    ownedResultsPath: string;
 }): Promise<AggregateResult>;
 //# sourceMappingURL=aggregate.d.ts.map

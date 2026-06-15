@@ -30,14 +30,14 @@ test("resolveToolCiConfig reads GitHub and tools-ci env without requiring path e
     GITHUB_RUN_ID: "456",
     GITHUB_SHA: "abc123",
     OD_CI_PROFILE: "ci-playwright",
-    OD_CI_PROVIDER_ID: "runner",
+    OD_CI_PROVIDER_ID: "owned",
     OD_CI_WORKSPACE_ROOT: "/repo",
   });
 
   assert.equal(config.eventName, "workflow_dispatch");
   assert.equal(config.headSha, "abc123");
   assert.equal(config.profile, "ci-playwright");
-  assert.equal(config.providerId, "runner");
+  assert.equal(config.providerId, "owned");
   assert.equal(config.runAttempt, "2");
   assert.equal(config.runId, "456");
   assert.equal(config.roots.cacheRoot, join("/repo", ".tmp", "tools-ci", "cache", "ci-playwright"));

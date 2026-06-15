@@ -5,7 +5,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const WORKSPACE_ROOT = resolve(__dirname, "../../..");
 
-export type ToolCiProfile = "ci-base" | "ci-playwright" | "nix-capable" | "hosted" | "runner" | "local";
+export type ToolCiProfile = "ci-base" | "ci-playwright" | "nix-capable" | "github" | "owned" | "local";
 export type ToolCiSourceMode = "direct" | "copy";
 
 export type ToolCiRoots = {
@@ -91,8 +91,8 @@ function resolveToolCiProfile(value: string | undefined): ToolCiProfile {
     value === "ci-base" ||
     value === "ci-playwright" ||
     value === "nix-capable" ||
-    value === "hosted" ||
-    value === "runner" ||
+    value === "github" ||
+    value === "owned" ||
     value === "local"
   ) {
     return value;
@@ -154,7 +154,7 @@ export function resolveToolCiConfig(
   });
 
   return {
-    capabilitiesPath: resolve(options.capabilitiesPath ?? nonEmpty(env.OD_CI_CAPABILITIES) ?? path.join(workspaceRoot, "tools", "ci", "fixtures", "capabilities.hosted.json")),
+    capabilitiesPath: resolve(options.capabilitiesPath ?? nonEmpty(env.OD_CI_CAPABILITIES) ?? path.join(workspaceRoot, "tools", "ci", "fixtures", "capabilities.github.json")),
     eventName: options.eventName ?? nonEmpty(env.OD_CI_EVENT_NAME) ?? nonEmpty(env.GITHUB_EVENT_NAME) ?? "unknown",
     headSha: options.headSha ?? nonEmpty(env.OD_CI_HEAD_SHA) ?? nonEmpty(env.CI_GATE_HEAD_SHA) ?? nonEmpty(env.GITHUB_SHA) ?? "unknown",
     manifestPath: resolve(options.manifestPath ?? nonEmpty(env.OD_CI_ATOM_MANIFEST) ?? path.join(workspaceRoot, "tools", "ci", "atoms.json")),
