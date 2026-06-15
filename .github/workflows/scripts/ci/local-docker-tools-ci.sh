@@ -27,7 +27,8 @@ Environment:
   OPEN_DESIGN_CI_IMAGE_REF          Docker image ref override
   OPEN_DESIGN_CI_BASE_IMAGE         ci-base image ref, default open-design-ci-base:v0.1.0-beta.1
   OPEN_DESIGN_CI_PLAYWRIGHT_IMAGE   ci-playwright image ref, default open-design-ci-playwright:v0.1.0-beta.2
-  OPEN_DESIGN_CI_NIX_IMAGE          nix-capable image ref, default open-design-ci-nix:v0.1.0-beta.3
+  OPEN_DESIGN_CI_NIX_IMAGE          nix-capable image ref, default open-design-ci-nix:v0.1.0-beta.5
+  OPEN_DESIGN_CI_NIX_VOLUME         nix-capable Docker volume, default open-design-tools-ci-nix-store
 
 Evidence is written under:
   .tmp/workflows/ci-gate/runs/<run-id>
@@ -121,7 +122,7 @@ case "$profile" in
     default_image_ref="${OPEN_DESIGN_CI_PLAYWRIGHT_IMAGE:-open-design-ci-playwright:v0.1.0-beta.2}"
     ;;
   nix-capable)
-    default_image_ref="${OPEN_DESIGN_CI_NIX_IMAGE:-open-design-ci-nix:v0.1.0-beta.3}"
+    default_image_ref="${OPEN_DESIGN_CI_NIX_IMAGE:-open-design-ci-nix:v0.1.0-beta.5}"
     ;;
   *)
     default_image_ref="${OPEN_DESIGN_CI_BASE_IMAGE:-open-design-ci-base:v0.1.0-beta.1}"
@@ -146,13 +147,13 @@ if [ ! -f "$repo_root/tools/ci/dist/index.mjs" ]; then
   exit 1
 fi
 
-docker inspect --type=image "$image_ref" >/dev/null
-
 mkdir -p "$run_root" "$tool_root/selections"
 
 docker_profile_args=()
 docker_profile_env=()
+docker_profile_volumes=()
 docker_source_env=(--env OD_CI_COPY_NODE_MODULES=1)
+docker_identity_env=()
 if [ "$profile" = "ci-playwright" ]; then
   docker_profile_args=(--shm-size 2g)
   docker_profile_env=(
@@ -163,6 +164,16 @@ if [ "$profile" = "ci-playwright" ]; then
 fi
 if [ "$profile" = "nix-capable" ]; then
   docker_source_env=()
+  nix_volume="${OPEN_DESIGN_CI_NIX_VOLUME:-open-design-tools-ci-nix-store}"
+  docker_profile_volumes=(
+    --volume "$nix_volume:/nix"
+  )
+  docker_identity_env=(
+    --env USER=runner
+    --env LOGNAME=runner
+    --env CI_GATE_NIX_FLAKE_REF="path:/tmp/tools-ci-work/$run_id"
+    --env $'NIX_CONFIG=experimental-features = nix-command flakes\nmax-jobs = 1\ncores = 1\nhttp-connections = 1'
+  )
   ci_mode="nix"
 fi
 
@@ -189,6 +200,7 @@ docker run --rm \
   --volume "$repo_root:/repo-src:ro" \
   --volume "$repo_root/.tmp/workflows/ci-gate:/evidence" \
   --volume "$tool_root:/tool" \
+  "${docker_profile_volumes[@]}" \
   --workdir /repo-src \
   --env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
   --env HOME=/tool/home \
@@ -208,6 +220,7 @@ docker run --rm \
   --env OD_CI_WORKSPACE_ROOT=/repo-src \
   --env SHELL=/bin/bash \
   "${docker_source_env[@]}" \
+  "${docker_identity_env[@]}" \
   "${docker_profile_env[@]}" \
   "$image_ref" \
   bash -lc 'node /repo-src/tools/ci/dist/index.mjs execute --selection "/tool/selections/$OD_CI_RUN_ID.json"'

@@ -992,9 +992,10 @@ async function selectAtomsFromFiles(options) {
 
 // src/execute.ts
 import { chmod, cp, mkdir, readFile as readFile4, rm, writeFile as writeFile3 } from "node:fs/promises";
-import { readFileSync } from "node:fs";
+import { createWriteStream, readFileSync } from "node:fs";
 import { dirname as dirname2, isAbsolute, parse, relative, resolve as resolve5 } from "node:path";
 import { spawn } from "node:child_process";
+import { once } from "node:events";
 
 // src/envelope.ts
 import path, { resolve as resolve4 } from "node:path";
@@ -1458,6 +1459,8 @@ async function runAtom(atom, envelope) {
   await mkdir(logDir, { recursive: true });
   await mkdir(artifactDir, { recursive: true });
   await writeFile3(stepsPath, "", "utf8");
+  const stdoutStream = createWriteStream(stdoutPath, { flags: "w" });
+  const stderrStream = createWriteStream(stderrPath, { flags: "w" });
   const startedAt = Date.now();
   const scriptPath = resolve5(envelope.workDir, atom.script);
   const child = spawn("bash", [scriptPath], {
@@ -1465,6 +1468,7 @@ async function runAtom(atom, envelope) {
     env: {
       ...executionEnv(envelope),
       CI_GATE_ACTION_TIMINGS_PATH: stepsPath,
+      CI_GATE_STEP_TIMEOUT_SECONDS: String(atom.timeoutSeconds),
       OD_CI_ARTIFACT_DIR: artifactDir
     },
     stdio: ["ignore", "pipe", "pipe"]
@@ -1475,9 +1479,11 @@ async function runAtom(atom, envelope) {
   child.stderr.setEncoding("utf8");
   child.stdout.on("data", (chunk) => {
     stdout += chunk;
+    stdoutStream.write(chunk);
   });
   child.stderr.on("data", (chunk) => {
     stderr += chunk;
+    stderrStream.write(chunk);
   });
   let timedOut = false;
   const timeout = setTimeout(() => {
@@ -1489,8 +1495,9 @@ async function runAtom(atom, envelope) {
   });
   clearTimeout(timeout);
   const finishedAt = Date.now();
-  await writeFile3(stdoutPath, stdout, "utf8");
-  await writeFile3(stderrPath, stderr, "utf8");
+  stdoutStream.end();
+  stderrStream.end();
+  await Promise.all([once(stdoutStream, "finish"), once(stderrStream, "finish")]);
   await writeAtomMetadata({
     call: atom.call,
     envelope,
