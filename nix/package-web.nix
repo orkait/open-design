@@ -30,7 +30,6 @@ let
   pnpmDepsHash = (import ./pnpm-deps.nix).webHash;
   pnpmWorkspaceFilters = map (workspacePath: "./${workspacePath}") workspacePaths;
   dependencyBuildPaths = lib.filter (workspacePath: workspacePath != "apps/web") workspacePaths;
-  pnpmRegistry = "https://registry.npmmirror.com";
 in
   stdenv.mkDerivation (finalAttrs: {
     inherit pname version src;
@@ -52,7 +51,6 @@ in
       pnpm = pnpm_10;
       pnpmWorkspaces = pnpmWorkspaceFilters;
       fetcherVersion = 3;
-      NIX_NPM_REGISTRY = pnpmRegistry;
     };
 
     env = {

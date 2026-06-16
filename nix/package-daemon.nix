@@ -47,7 +47,6 @@ let
 
   pnpmDepsHash = (import ./pnpm-deps.nix).daemonHash;
   pnpmWorkspaceFilters = map (workspacePath: "./${workspacePath}") workspacePaths;
-  pnpmRegistry = "https://registry.npmmirror.com";
 in
   stdenv.mkDerivation (finalAttrs: {
     inherit pname version src;
@@ -75,7 +74,6 @@ in
       pnpm = pnpm_10;
       pnpmWorkspaces = pnpmWorkspaceFilters;
       fetcherVersion = 3;
-      NIX_NPM_REGISTRY = pnpmRegistry;
     };
 
     env.NODE_ENV = "production";

@@ -211,6 +211,7 @@ if [ "$profile" = "nix-capable" ]; then
     --env USER=runner
     --env LOGNAME=runner
     --env CI_GATE_NIX_FLAKE_REF="path:/tmp/tools-ci-work/$run_id"
+    --env NIX_NPM_REGISTRY=https://registry.npmmirror.com
     --env $'NIX_CONFIG=experimental-features = nix-command flakes\nmax-jobs = 1\ncores = 1\nconnect-timeout = 30\ndownload-attempts = 3\nhttp-connections = 8\nmax-substitution-jobs = 8\nstalled-download-timeout = 120\nsubstituters = https://mirrors.ustc.edu.cn/nix-channels/store https://mirrors.tuna.tsinghua.edu.cn/nix-channels/store https://cache.nixos.org/\ntrusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY='
   )
 fi
