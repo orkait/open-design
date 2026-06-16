@@ -589,20 +589,40 @@
     });
     addCandidate(candidates, meta('image'), 'Social preview image', 'image', 45);
 
+    // The page's own brand name (og:site_name, else first heading, else
+    // <title>). A logo whose alt/class echoes this is the PRIMARY brand mark —
+    // not a partner/sub-brand lockup that merely renders in the same header.
+    // Matched against alt/id/class only, never the src URL, because the domain
+    // usually echoes the brand and would otherwise match every asset.
+    const normalizeName = (value) =>
+      String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+    const brandName = normalizeName(
+      meta('site_name') || document.querySelector('h1')?.textContent || document.title,
+    );
+
     for (const img of Array.from(document.images)) {
       const src = img.currentSrc || img.src;
       if (!src) continue;
       const r = img.getBoundingClientRect();
-      const area = Math.max(img.naturalWidth || r.width || 0, 1) * Math.max(img.naturalHeight || r.height || 0, 1);
+      const naturalArea = Math.max(img.naturalWidth || r.width || 0, 1) * Math.max(img.naturalHeight || r.height || 0, 1);
+      const renderedArea = Math.max(r.width || 0, 0) * Math.max(r.height || 0, 0);
       const hay = `${img.alt || ''} ${img.id || ''} ${img.className || ''} ${img.src || ''}`.toLowerCase();
       const logoish = /(logo|brand|mark|icon|wordmark)/.test(hay) || img.closest('header, nav');
       if (Math.max(img.naturalWidth || r.width || 0, img.naturalHeight || r.height || 0) < 32 && !logoish) continue;
+      // Logos rank by ON-PAGE size + brand-name match: an SVG's intrinsic
+      // naturalWidth/Height is its arbitrary viewBox and says nothing about
+      // which mark is primary (a small sub-brand SVG with a large viewBox would
+      // otherwise outrank the bigger, real logo). Non-logo images keep
+      // natural-area ranking, where higher source resolution is preferable.
+      const nameHay = normalizeName(`${img.alt || ''} ${img.id || ''} ${img.className || ''}`);
+      const nameBonus = logoish && brandName.length > 2 && nameHay.includes(brandName) ? 30 : 0;
+      const areaBonus = logoish ? Math.min(20, renderedArea / 2000) : Math.min(30, naturalArea / 30000);
       addCandidate(
         candidates,
         src,
         img.alt || (logoish ? 'Brand mark' : 'Page image'),
         logoish ? 'logo' : 'image',
-        (logoish ? 75 : 20) + Math.min(30, area / 30000),
+        (logoish ? 75 : 20) + areaBonus + nameBonus,
       );
     }
 
