@@ -10,5 +10,5 @@
   # 2. Run the relevant nix build/flake check
   # 3. Copy the expected hash printed by Nix into the matching field below
   daemonHash = "sha256-wj/yfbw+Y2Lv2ppLRleh0KuFo7IDiOunHqa3iCwv12s=";
-  webHash = "sha256-Y9hspnCl3NGO7yTIIfqu2yBN0hYvfLEjiWRKxjasGmg=";
+  webHash = "sha256-zALb+EbAylQGOnts0zeCwyOIWdcnyXBm/mb3QrXMBok=";
 }
