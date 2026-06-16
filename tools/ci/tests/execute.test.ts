@@ -49,7 +49,7 @@ test("executeAtoms runs selected atom scripts and writes result files", async ()
         {
           artifactProfile: "nix",
           cacheProfile: "nix",
-          call: "nix flake check --print-build-logs --keep-going",
+          call: "nix flake archive + check --no-build + build checks",
           domain: "nix",
           key: "flake",
           name: "nix",

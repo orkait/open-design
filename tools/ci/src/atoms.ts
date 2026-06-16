@@ -123,7 +123,7 @@ export function deriveAtomIdentity(name: string): { domain: AtomDomain; key: str
     case "browser":
       return { domain: "e2e", key: "browser", call: "browser e2e and critical Playwright" };
     case "nix":
-      return { domain: "nix", key: "flake", call: "nix flake check --print-build-logs --keep-going" };
+      return { domain: "nix", key: "flake", call: "nix flake archive + check --no-build + build checks" };
     default:
       return { domain: "workspace", key: name, call: name };
   }

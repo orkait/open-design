@@ -176,6 +176,8 @@ async function runProcess(options: {
   command: string;
   cwd: string;
   env: NodeJS.ProcessEnv;
+  stderrStream?: NodeJS.WritableStream;
+  stdoutStream?: NodeJS.WritableStream;
   timeoutSeconds?: number;
 }): Promise<{ exitCode: number; stderr: string; stdout: string; timedOut: boolean }> {
   const child = spawn(options.command, options.args, {
@@ -190,9 +192,13 @@ async function runProcess(options: {
   child.stderr.setEncoding("utf8");
   child.stdout.on("data", (chunk: string) => {
     stdout += chunk;
+    options.stdoutStream?.write(chunk);
+    if (process.env.OD_CI_STREAM_CHILD_LOGS !== "0") process.stdout.write(chunk);
   });
   child.stderr.on("data", (chunk: string) => {
     stderr += chunk;
+    options.stderrStream?.write(chunk);
+    if (process.env.OD_CI_STREAM_CHILD_LOGS !== "0") process.stderr.write(chunk);
   });
 
   let timedOut = false;
@@ -204,7 +210,10 @@ async function runProcess(options: {
       }, options.timeoutSeconds * 1000);
   const exitCode = await new Promise<number>((resolvePromise) => {
     child.on("error", (error) => {
-      stderr += `${error instanceof Error ? error.message : String(error)}\n`;
+      const message = `${error instanceof Error ? error.message : String(error)}\n`;
+      stderr += message;
+      options.stderrStream?.write(message);
+      if (process.env.OD_CI_STREAM_CHILD_LOGS !== "0") process.stderr.write(message);
       resolvePromise(1);
     });
     child.on("close", (code) => resolvePromise(code ?? 1));
@@ -251,6 +260,8 @@ async function runWorkspaceSetup(
   const metadataPath = resolve(logDir, "metadata.json");
   await mkdir(logDir, { recursive: true });
   await writeFile(stepsPath, "", "utf8");
+  const stdoutStream = createWriteStream(stdoutPath, { flags: "w" });
+  const stderrStream = createWriteStream(stderrPath, { flags: "w" });
 
   const startedAt = Date.now();
   const env = executionEnv(envelope);
@@ -274,6 +285,8 @@ async function runWorkspaceSetup(
       command: "corepack",
       cwd: envelope.workDir,
       env,
+      stderrStream,
+      stdoutStream,
       timeoutSeconds,
     });
     exitCode = prepare.exitCode;
@@ -287,6 +300,8 @@ async function runWorkspaceSetup(
         command: "pnpm",
         cwd: envelope.workDir,
         env,
+        stderrStream,
+        stdoutStream,
         timeoutSeconds,
       });
       exitCode = install.exitCode;
@@ -297,16 +312,21 @@ async function runWorkspaceSetup(
     if (timedOut) {
       reason = `workspace setup command timed out after ${timeoutSeconds}s`;
       stderr += `${reason}\n`;
+      stderrStream.write(`${reason}\n`);
+      if (process.env.OD_CI_STREAM_CHILD_LOGS !== "0") process.stderr.write(`${reason}\n`);
     }
   } catch (error) {
     exitCode = 1;
     reason = error instanceof Error ? error.message : String(error);
     stderr += `${reason}\n`;
+    stderrStream.write(`${reason}\n`);
+    if (process.env.OD_CI_STREAM_CHILD_LOGS !== "0") process.stderr.write(`${reason}\n`);
   }
 
   const finishedAt = Date.now();
-  await writeFile(stdoutPath, stdout, "utf8");
-  await writeFile(stderrPath, stderr, "utf8");
+  stdoutStream.end();
+  stderrStream.end();
+  await Promise.all([once(stdoutStream, "finish"), once(stderrStream, "finish")]);
   await writeAtomMetadata({
     call: "corepack prepare + pnpm install",
     envelope,
@@ -499,10 +519,12 @@ async function runAtom(atom: AtomDefinition, envelope: NormalizedEnvelope): Prom
   child.stdout.on("data", (chunk: string) => {
     stdout += chunk;
     stdoutStream.write(chunk);
+    if (process.env.OD_CI_STREAM_CHILD_LOGS !== "0") process.stdout.write(chunk);
   });
   child.stderr.on("data", (chunk: string) => {
     stderr += chunk;
     stderrStream.write(chunk);
+    if (process.env.OD_CI_STREAM_CHILD_LOGS !== "0") process.stderr.write(chunk);
   });
 
   let timedOut = false;

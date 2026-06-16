@@ -5,7 +5,7 @@
       "domain": "nix",
       "key": "flake",
       "name": "nix",
-      "call": "nix flake check --print-build-logs --keep-going",
+      "call": "nix flake archive + check --no-build + build checks",
       "script": ".github/workflows/scripts/ci/actions/nix.sh",
       "requires": ["nix"],
       "setup": "nix-flake",
