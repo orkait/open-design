@@ -265,6 +265,13 @@ export async function configureVisualPage(page: Page, options: VisualPageOptions
     await fulfillGet(route, { ok: true });
   });
 
+  await page.route('**/api/community/discord', async (route) => {
+    await fulfillGet(route, {
+      onlineCount: 0,
+      memberCount: 0,
+    });
+  });
+
   await page.route('**/api/integrations/vela/status', async (route) => {
     await fulfillGet(route, {
       loggedIn: false,
@@ -272,6 +279,10 @@ export async function configureVisualPage(page: Page, options: VisualPageOptions
       configPath: '/tmp/.amr/config.json',
       user: null,
     });
+  });
+
+  await page.route('**/api/media/providers/aihubmix/models**', async (route) => {
+    await fulfillGet(route, { models: [] });
   });
 
   await page.route(VISUAL_GITHUB_REPO_API, async (route) => {
@@ -557,7 +568,8 @@ export async function scrollVisualLocatorIntoStableView(
 }
 
 export async function waitForVisualStable(page: Page): Promise<void> {
-  await page.waitForLoadState('networkidle', { timeout: visualStableTimeoutMs }).catch(() => {});
+  // The app shell owns long-lived SSE channels such as /api/memory/events, so
+  // Playwright's networkidle state never represents visual readiness here.
   await waitForVisualFrameAssets(page);
   await waitForVisualLayoutStable(page);
 }
