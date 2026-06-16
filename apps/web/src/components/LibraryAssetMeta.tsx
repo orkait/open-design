@@ -57,6 +57,21 @@ export function badgeKind(asset: LibraryAsset): BadgeKind {
   return elementMetaOf(asset) ? 'element' : asset.kind;
 }
 
+/** A badge-aware kind filter value: a badge kind, or `''` for "all kinds". */
+export type KindFilterValue = BadgeKind | '';
+
+/**
+ * Whether an asset matches a badge-aware kind filter. Filtering keys off
+ * {@link badgeKind} rather than the raw storage `kind`, so an element-pick clip
+ * — stored as an `image` enriched with `metadata.element` — is matched by the
+ * `element` filter and excluded from the plain `image` filter. `''` matches
+ * every asset. This is the single rule shared by the Library grid and the
+ * "Import from library" picker so both surfaces agree on what each chip shows.
+ */
+export function matchesKindFilter(asset: LibraryAsset, filter: KindFilterValue): boolean {
+  return !filter || badgeKind(asset) === filter;
+}
+
 export function kindLabel(kind: BadgeKind): string {
   return KIND_META[kind]?.label ?? kind;
 }

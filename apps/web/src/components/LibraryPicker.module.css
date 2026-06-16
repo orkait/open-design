@@ -167,10 +167,32 @@
   color: var(--text-muted);
 }
 
-.check {
+/* Kind badge — top-right, tinted per asset kind. Mirrors the Library grid card
+   (LibrarySection.module.css) so both surfaces present an asset identically. */
+.kindBadge {
   position: absolute;
   top: 6px;
   right: 6px;
+  z-index: 2;
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px 2px 5px;
+  border-radius: 999px;
+  color: var(--kind-tint, #374151);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+  backdrop-filter: blur(4px);
+}
+
+/* Selection check sits top-left so it never overlaps the top-right kind badge. */
+.check {
+  position: absolute;
+  top: 6px;
+  left: 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;

@@ -290,14 +290,21 @@
 
       const type = WORKER_ACTIONS[act];
       if (!type) return;
-      toast(act === 'figma' ? 'Building Figma capture…' : 'Capturing…');
+      // Spinner on the bar for the whole operation, like element/region capture.
+      // For page/figma/shot the worker briefly pulls the bar out for the capture
+      // itself; the spinner carries the rest (the slower save/build). No start
+      // toast — it would only be hidden again for the capture frame; the spinner
+      // is the in-progress signal and the result toast is the outcome.
+      setBusy(true);
       let res;
       try {
         res = await chrome.runtime.sendMessage({ type });
       } catch {
+        setBusy(false);
         toast('Extension error — reload the page');
         return;
       }
+      setBusy(false);
       if (!res || !res.ok) {
         toast(res && res.error === 'not running'
           ? 'Open Design isn’t running — start the app'
@@ -305,7 +312,13 @@
         return;
       }
       if (type === 'capturePageToLibrary') {
-        toast(res.deduped ? 'Page already in library' : res.hasFigma ? 'Saved page + Figma' : 'Saved page');
+        if (res.deduped) toast('Page already in library');
+        else {
+          // Reduced-fidelity fallback for very large pages: note when some
+          // images were left as live links so the save isn't misread as full.
+          const base = res.hasFigma ? 'Saved page + Figma' : 'Saved page';
+          toast(res.partialImages ? `${base} (some images left as links)` : base);
+        }
       } else if (type === 'downloadFigma') toast('Figma capture downloaded');
       else toast(res.deduped ? 'Already in library' : 'Saved screenshot');
     });
@@ -620,9 +633,11 @@
   }
 
   // Screenshot the visible tab and crop to the element. The picker is torn down
-  // first; the worker pulls the bar out of frame for just the screenshot itself
-  // (see captureElement in background.js), so the bar stays put — wearing a
-  // spinner — through the slower save instead of vanishing for the whole trip.
+  // first; the bar wears a spinner (setBusy) through the whole save and only
+  // leaves the frame for the screenshot itself when it would land inside the
+  // crop (hideBar → captureElement in background.js). So in the common case the
+  // bar never blinks — it just shows it's working — instead of vanishing for the
+  // entire capture-and-save round-trip as it used to.
   async function commitCapture(el) {
     if (!el) return;
     const rect = el.getBoundingClientRect();
@@ -889,6 +904,9 @@
       saveBtn.disabled = true;
       saveBtn.textContent = 'Saving…';
       closeImagePicker();
+      // Spinner on the bar through the save, matching every other capture action.
+      // ingestImages takes no screenshot, so the bar stays put — no blink.
+      setBusy(true);
       toast(`Saving ${chosen.length} image(s)…`);
       let res;
       try {
@@ -899,9 +917,11 @@
           sourceTitle: document.title,
         });
       } catch {
+        setBusy(false);
         toast('Extension error — reload the page');
         return;
       }
+      setBusy(false);
       if (!res || !res.ok) {
         toast(res && res.error === 'not running'
           ? 'Open Design isn’t running — start the app'
@@ -1075,6 +1095,9 @@
     const sh = imgBadgeHost.attachShadow({ mode: 'open' });
     setHTML(sh, `
       <style>
+        /* The wrap is the positioned anchor; the badge is the only hit target,
+           the tip is a non-interactive label that drops below it. */
+        .wrap { position: relative; width: 26px; height: 26px; pointer-events: none; }
         .badge {
           all: unset; pointer-events: auto; cursor: pointer; box-sizing: border-box;
           display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px;
@@ -1086,10 +1109,27 @@
         .badge svg { width: 15px; height: 15px; display: block; }
         .badge:hover { background: #c96442; transform: scale(1.06); }
         .badge:active { transform: scale(0.94); }
+        /* Styled hover tip (replaces the slow native title). Right-aligned to the
+           badge and dropping down, so it never clips off the right edge where the
+           badge sits. Our own pill — fast, on-brand — instead of the OS tooltip. */
+        .tip {
+          position: absolute; top: calc(100% + 7px); right: 0;
+          padding: 5px 9px; border-radius: 7px;
+          background: #202020; color: #fff;
+          font: 600 11px/1.3 -apple-system, system-ui, 'Segoe UI', sans-serif;
+          letter-spacing: 0.01em; white-space: nowrap;
+          border: 1px solid rgba(255,255,255,0.10); box-shadow: 0 6px 20px rgba(0,0,0,0.34);
+          opacity: 0; transform: translateY(-4px); pointer-events: none;
+          transition: opacity 160ms cubic-bezier(0.23,1,0.32,1), transform 160ms cubic-bezier(0.23,1,0.32,1);
+        }
+        .badge:hover ~ .tip { opacity: 1; transform: translateY(0); transition-delay: 120ms; }
       </style>
-      <button class="badge" id="b" type="button" title="Save image to Open Design Library" aria-label="Save image to Open Design Library">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-      </button>`);
+      <div class="wrap">
+        <button class="badge" id="b" type="button" aria-label="Save image to Open Design Library">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
+        <span class="tip">Save image to Open Design</span>
+      </div>`);
     document.documentElement.appendChild(imgBadgeHost);
     imgBadgeBtn = sh.getElementById('b');
     // The pointer crosses a 1-frame gap between leaving the image and reaching
@@ -1104,7 +1144,9 @@
       const src = img && (img.currentSrc || img.src);
       if (!src) return;
       hideImageBadge();
-      toast('Saving image…');
+      // The badge vanishes on click, so the toast is the only feedback — keep it
+      // a spinner that holds until the result replaces it.
+      toast('Saving image…', { loading: true });
       let res;
       try {
         res = await chrome.runtime.sendMessage({

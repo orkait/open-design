@@ -11,17 +11,30 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
-import type { LibraryAsset, LibraryAssetKind } from '@open-design/contracts';
+import type { LibraryAsset } from '@open-design/contracts';
 import { Button, Input } from '@open-design/components';
 import { useT } from '../i18n';
 import { modalOverlay, modalContent } from '../motion';
 import { fetchLibraryAssets, libraryAssetRawUrl } from '../providers/registry';
-import { KindIcon, assetTitle, colorOf, kindLabel } from './LibraryAssetMeta';
+import {
+  KindIcon,
+  assetTitle,
+  badgeKind,
+  colorOf,
+  kindLabel,
+  kindTint,
+  matchesKindFilter,
+} from './LibraryAssetMeta';
+import type { BadgeKind } from './LibraryAssetMeta';
 import { Icon } from './Icon';
 import styles from './LibraryPicker.module.css';
 
-const KIND_FILTERS: LibraryAssetKind[] = [
+// Mirrors the Library grid's chips. `element` is a badge-only identity (an image
+// clip carrying `metadata.element`), so it has no storage kind of its own; the
+// filter keys off `badgeKind` via `matchesKindFilter`.
+const KIND_FILTERS: BadgeKind[] = [
   'image',
+  'element',
   'video',
   'html',
   'font',
@@ -47,7 +60,7 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
   const t = useT();
   const [assets, setAssets] = useState<LibraryAsset[]>([]);
   const [loading, setLoading] = useState(true);
-  const [kind, setKind] = useState<LibraryAssetKind | ''>('');
+  const [kind, setKind] = useState<BadgeKind | ''>('');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [busy, setBusy] = useState(false);
@@ -76,7 +89,7 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
     return assets.filter((asset) => {
-      if (kind && asset.kind !== kind) return false;
+      if (!matchesKindFilter(asset, kind)) return false;
       if (!q) return true;
       const hay = `${assetTitle(asset)} ${asset.tags?.join(' ') ?? ''} ${asset.caption ?? ''} ${
         asset.sourceDomain ?? ''
@@ -200,6 +213,13 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
                     >
                       <span className={styles.thumb}>
                         <AssetThumb asset={asset} />
+                        <span
+                          className={styles.kindBadge}
+                          style={{ ['--kind-tint' as string]: kindTint(badgeKind(asset)) }}
+                        >
+                          <KindIcon kind={badgeKind(asset)} size={11} />
+                          {kindLabel(badgeKind(asset))}
+                        </span>
                         {isSelected ? (
                           <span className={styles.check} aria-hidden>
                             <Icon name="check" size={12} />

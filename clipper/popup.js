@@ -191,13 +191,21 @@ $('page').addEventListener('click', async () => {
   setBusy(true);
   setMsg('Capturing page…', 'loading');
   const res = await send({ type: 'capturePageToLibrary', opts: captureOpts() });
-  reportCapture(res, (r) =>
-    r.deduped
-      ? 'Page already in library.'
-      : r.hasFigma
-        ? `Saved page + Figma capture${r.truncated ? ' (large page — partial)' : ''} to library.`
-        : 'Saved page to library.',
-  );
+  reportCapture(res, (r) => {
+    if (r.deduped) return 'Page already in library.';
+    // A very large page is captured at reduced fidelity rather than failing:
+    // the layout (Figma IR) may be partial and/or some images stay as live
+    // links. Tell the user when either happened so the result isn't surprising.
+    const notes = [];
+    if (r.truncated) notes.push('large page — partial layout');
+    if (r.partialImages) {
+      notes.push(`${r.partialImages} image${r.partialImages === 1 ? '' : 's'} left as links`);
+    }
+    const suffix = notes.length ? ` (${notes.join('; ')})` : '';
+    return r.hasFigma
+      ? `Saved page + Figma capture${suffix} to library.`
+      : `Saved page${suffix} to library.`;
+  });
 });
 
 $('figma').addEventListener('click', async () => {

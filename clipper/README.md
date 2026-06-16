@@ -84,6 +84,11 @@ The **Capture options** (under *Advanced*) include *Inline images* — on by
 default for the highest fidelity; turn it off for smaller, faster captures that
 reference images by URL instead of embedding them.
 
+Very large, image-heavy pages are captured at reduced fidelity rather than
+failing: inlining stops once a size budget is reached and the remaining images
+are left as live URLs, so the page still saves. The popup/on-page toast says so
+("some images left as links") when this happens.
+
 ## Permissions
 
 - `host_permissions: <all_urls>` — needed to screenshot/read images on any page,

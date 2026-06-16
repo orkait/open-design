@@ -14,7 +14,6 @@
 
 import {
   useEffect,
-  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -94,31 +93,28 @@ export function DesignSystemAssetDropzone({
   const [dragOver, setDragOver] = useState(false);
   const [lightbox, setLightbox] = useState<File | null>(null);
 
-  // Object URLs for image previews, cached by File reference so adding one
-  // asset doesn't churn (revoke + recreate) every other thumbnail.
-  const urlCacheRef = useRef<Map<File, string>>(new Map());
-  const previews = useMemo(() => {
-    const cache = urlCacheRef.current;
+  // Object URLs for image previews. Creation and revocation MUST be paired
+  // inside one `files`-keyed effect: the cleanup revokes exactly the URLs its
+  // own setup created. This is the StrictMode-safe shape. The previous split —
+  // create in a useMemo, revoke in a separate empty-deps cleanup — broke any
+  // preview staged at first mount: StrictMode's simulated unmount fired the
+  // cleanup and revoked the URLs, then the remount left the memo (deps
+  // unchanged) handing back those now-dead blob: links. That is exactly the
+  // Library "create design system" hand-off, where assets are present before
+  // the user touches the dropzone, so its thumbnails rendered as broken images.
+  const [previews, setPreviews] = useState<Map<File, string>>(new Map());
+  useEffect(() => {
     const next = new Map<File, string>();
     for (const file of files) {
       if (!isImage(file)) continue;
-      const url = cache.get(file) ?? createPreviewUrl(file);
+      const url = createPreviewUrl(file);
       if (url) next.set(file, url);
     }
-    for (const [file, url] of cache) {
-      if (!next.has(file)) revokePreviewUrl(url);
-    }
-    urlCacheRef.current = next;
-    return next;
+    setPreviews(next);
+    return () => {
+      for (const url of next.values()) revokePreviewUrl(url);
+    };
   }, [files]);
-
-  useEffect(
-    () => () => {
-      for (const url of urlCacheRef.current.values()) revokePreviewUrl(url);
-      urlCacheRef.current = new Map();
-    },
-    [],
-  );
 
   // Paste anywhere on the page routes image/file clipboard content into the
   // asset zone — unless focus is in a text field (brand description / notes),

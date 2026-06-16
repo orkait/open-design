@@ -170,7 +170,7 @@ export function registerLibraryRoutes(app: Express, ctx: RegisterLibraryRoutesDe
         }
       }
     }
-    return { relPath, elementRelPath };
+    return elementRelPath ? { relPath, elementRelPath } : { relPath };
   }
 
   // Live ingest/enrichment feed. Clipper captures flow through this route, so

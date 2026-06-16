@@ -139,6 +139,16 @@ async function grabImages() {
 
 const MAX_RESOURCE_BYTES = 6 * 1024 * 1024;
 
+// The daemon accepts an ingest body up to 128MB. Every fetched resource is
+// inlined as a base64 data URI into BOTH the HTML string and the Figma IR, so
+// each one can contribute up to ~2× its data-URI length to the final body.
+// Budget the cumulative data-URI size so that even with that doubling, plus the
+// page's own markup and IR geometry, we stay comfortably under the limit. Once
+// the budget is spent the remaining resources are left as live URLs — the
+// capture still saves (at reduced image fidelity) instead of 413-failing the
+// whole page, which is what an image-heavy site (news front pages) used to hit.
+const MAX_TOTAL_INLINE_BYTES = 48 * 1024 * 1024;
+
 // Service workers have no FileReader/createObjectURL — base64 the bytes by hand.
 async function fetchAsDataUri(url) {
   const resp = await fetch(url, { redirect: 'follow' });
@@ -159,17 +169,30 @@ async function fetchAsDataUri(url) {
 
 async function buildResourceMap(urls, includeImages) {
   const map = new Map();
-  if (!includeImages || !Array.isArray(urls) || !urls.length) return map;
+  let skipped = 0;
+  if (!includeImages || !Array.isArray(urls) || !urls.length) return { map, skipped };
+  // Fetches run in parallel, but JS is single-threaded so the read-check-write
+  // of `inlinedBytes` between awaits is atomic — no lost updates. Inlining order
+  // is whichever fetch resolves first; once over budget the rest stay live.
+  let inlinedBytes = 0;
   await Promise.all(
     urls.map(async (url) => {
+      let dataUri;
       try {
-        map.set(url, await fetchAsDataUri(url));
+        dataUri = await fetchAsDataUri(url);
       } catch {
         // hotlink-protected / oversized / offline — leave the original URL
+        return;
       }
+      if (inlinedBytes + dataUri.length > MAX_TOTAL_INLINE_BYTES) {
+        skipped += 1; // budget spent — leave this resource as a live URL
+        return;
+      }
+      inlinedBytes += dataUri.length;
+      map.set(url, dataUri);
     }),
   );
-  return map;
+  return { map, skipped };
 }
 
 function inlineHtml(html, map) {
@@ -225,12 +248,13 @@ async function capturePage(opts) {
     await sendToTab(tab.id, { type: 'odClipper:restoreAfterCapture' });
   }
   if (!cap || !cap.html) throw new Error('capture failed');
-  const map = await buildResourceMap(cap.resources, includeImages);
+  const { map, skipped } = await buildResourceMap(cap.resources, includeImages);
   return {
     html: inlineHtml(cap.html, map),
     figmaIr: cap.figmaIr ? inlineFigmaIr(cap.figmaIr, map) : null,
     figmaNodeCount: cap.figmaNodeCount || 0,
     truncated: Boolean(cap.figmaTruncated),
+    partialImages: skipped, // resources left as live URLs to fit the size budget
     title: cap.title || tab.title,
     url: cap.url || tab.url,
   };
@@ -253,6 +277,7 @@ async function capturePageToLibrary(opts) {
     deduped: Boolean(r.deduped),
     hasFigma: Boolean(figmaCapture),
     truncated: cap.truncated,
+    partialImages: cap.partialImages || 0,
   };
 }
 
@@ -266,7 +291,7 @@ async function downloadFigma(opts) {
     filename: `${slugify(cap.title)}.od-figma.json`,
     saveAs: false,
   });
-  return { truncated: cap.truncated };
+  return { truncated: cap.truncated, partialImages: cap.partialImages || 0 };
 }
 
 // --- element + selected-image capture --------------------------------------
@@ -406,12 +431,18 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         }
         case 'capturePageToLibrary': {
           const r = await capturePageToLibrary(msg.opts);
-          sendResponse({ ok: true, deduped: r.deduped, hasFigma: r.hasFigma, truncated: r.truncated });
+          sendResponse({
+            ok: true,
+            deduped: r.deduped,
+            hasFigma: r.hasFigma,
+            truncated: r.truncated,
+            partialImages: r.partialImages,
+          });
           break;
         }
         case 'downloadFigma': {
           const r = await downloadFigma(msg.opts);
-          sendResponse({ ok: true, truncated: r.truncated });
+          sendResponse({ ok: true, truncated: r.truncated, partialImages: r.partialImages });
           break;
         }
         case 'captureElement': {

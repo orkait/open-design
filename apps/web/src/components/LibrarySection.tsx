@@ -41,8 +41,10 @@ import {
   fontFamilyFor,
   kindLabel,
   kindTint,
+  matchesKindFilter,
   originProjectId,
   primarySource,
+  type KindFilterValue,
 } from './LibraryAssetMeta';
 import { LibraryPreviewModal } from './LibraryPreviewModal';
 import { LibraryUploadModal } from './LibraryUploadModal';
@@ -54,9 +56,12 @@ interface Props {
   onOpenProject: (projectId: string, fileName?: string) => void;
 }
 
+// `value` is matched against an asset's `badgeKind` (not its raw storage kind),
+// so `element` isolates clipper element-pick captures and `image` excludes them.
 const KIND_FILTERS: Array<{ value: string; label: string }> = [
   { value: '', label: 'All kinds' },
   { value: 'image', label: 'Images' },
+  { value: 'element', label: 'Elements' },
   { value: 'video', label: 'Video' },
   { value: 'html', label: 'HTML' },
   { value: 'font', label: 'Fonts' },
@@ -203,7 +208,9 @@ export function LibrarySection({ active, onOpenProject }: Props) {
 
   const query = useMemo<LibraryAssetQuery>(() => {
     const q: LibraryAssetQuery = {};
-    if (kind) q.kind = kind;
+    // `element` is a badge identity, not a storage kind (element clips are
+    // stored as `image`); narrow to images on the server, then split client-side.
+    if (kind) q.kind = kind === 'element' ? 'image' : kind;
     if (source) q.source = source;
     if (search.trim()) q.q = search.trim();
     return q;
@@ -212,9 +219,11 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   const load = useCallback(async () => {
     setLoading(true);
     const next = await fetchLibraryAssets(query);
-    setAssets(next);
+    // Final filtering is badge-aware (shared with the picker) so `image` excludes
+    // element captures and `element` keeps only them; other kinds pass through.
+    setAssets(next.filter((a) => matchesKindFilter(a, kind as KindFilterValue)));
     setLoading(false);
-  }, [query]);
+  }, [query, kind]);
 
   // Fetch when the tab becomes active or filters change.
   useEffect(() => {
