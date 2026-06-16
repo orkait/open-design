@@ -25,10 +25,38 @@ concurrency:
 
 jobs:
   capture:
-    name: Capture PR visual screenshots
+    name: Capture PR visual screenshots (${{ matrix.name }})
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: home-core
+            grep: '@visual-home-core'
+            daemon_port: '17456'
+            web_port: '17573'
+          - name: community
+            grep: '@visual-community'
+            daemon_port: '17476'
+            web_port: '17593'
+          - name: navigation
+            grep: '@visual-navigation'
+            daemon_port: '17496'
+            web_port: '17613'
+          - name: workspace
+            grep: '@visual-workspace'
+            daemon_port: '17516'
+            web_port: '17633'
+          - name: topbar-avatar
+            grep: '@visual-topbar-avatar'
+            daemon_port: '17536'
+            web_port: '17653'
+          - name: settings
+            grep: '@visual-settings'
+            daemon_port: '17556'
+            web_port: '17673'
 
     steps:
       - name: Checkout
@@ -43,13 +71,17 @@ jobs:
         id: capture
         continue-on-error: true
         env:
-          OD_VISUAL_OUTPUT_DIR: ui/reports/visual-screenshots
+          OD_E2E_NAMESPACE: visual-pr-capture-${{ matrix.name }}-${{ github.run_id }}
+          OD_PORT: ${{ matrix.daemon_port }}
+          OD_WEB_PORT: ${{ matrix.web_port }}
+          OD_VISUAL_OUTPUT_DIR: ui/reports/visual-screenshots/${{ matrix.name }}
           OD_PLAYWRIGHT_TIMEOUT: 90000
         run: |
           pnpm -C e2e exec tsx scripts/playwright.ts clean
-          # Advisory full visual capture for PR review comments. This should
-          # keep P2 coverage; the blocking subset lives in visual-pr-verify.
-          pnpm -C e2e exec playwright test -c playwright.visual.config.ts
+          # Advisory full visual capture for PR review comments. The matrix
+          # keeps P2 coverage while cutting wall-clock time; the blocking
+          # subset lives in visual-pr-verify.
+          pnpm -C e2e exec playwright test -c playwright.visual.config.ts --grep "${{ matrix.grep }}"
 
       - name: Write capture manifest
         run: |
@@ -59,6 +91,8 @@ jobs:
             "pr_number": "${{ github.event.pull_request.number }}",
             "head_sha": "${{ github.event.pull_request.head.sha }}",
             "base_sha": "${{ github.event.pull_request.base.sha }}",
+            "shard": "${{ matrix.name }}",
+            "grep": "${{ matrix.grep }}",
             "run_id": "${{ github.run_id }}",
             "capture_outcome": "${{ steps.capture.outcome }}"
           }
@@ -68,7 +102,7 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
         with:
-          name: visual-pr-capture-${{ github.event.pull_request.number }}-${{ github.run_id }}
+          name: visual-pr-capture-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ matrix.name }}
           path: |
             e2e/ui/reports/visual-screenshots
             e2e/ui/reports/visual-results.json

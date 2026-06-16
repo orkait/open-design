@@ -70,7 +70,7 @@ async function revealVisualHomeTemplates(page: Page) {
   return home;
 }
 
-test('[P2] captures the onboarding runtime selection surface', async ({ page }) => {
+test('[P2] @visual-home-core captures the onboarding runtime selection surface', async ({ page }) => {
   await configureVisualPage(page, {
     projects: [],
     agents: [VISUAL_AMR_AGENT, ...VISUAL_CLI_AGENTS],
@@ -96,7 +96,7 @@ test('[P2] captures the onboarding runtime selection surface', async ({ page }) 
   await captureVisual(page, 'visual-onboarding-runtime');
 });
 
-test('[P2] captures the visual home harness', async ({ page }) => {
+test('[P2] @visual-home-core captures the visual home harness', async ({ page }) => {
   await configureVisualPage(page, { projects: [] });
   await gotoVisualHome(page);
 
@@ -107,7 +107,7 @@ test('[P2] captures the visual home harness', async ({ page }) => {
   await captureVisual(page, 'visual-home');
 });
 
-test('[P2] captures the home plugin catalog surface', async ({ page }) => {
+test('[P2] @visual-community captures the home plugin catalog surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
 
@@ -127,7 +127,7 @@ test('[P2] captures the home plugin catalog surface', async ({ page }) => {
   await captureVisual(page, 'visual-home-catalog');
 });
 
-test('[P2] captures the home plugin filtered surface', async ({ page }) => {
+test('[P2] @visual-community captures the home plugin filtered surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
 
@@ -138,7 +138,7 @@ test('[P2] captures the home plugin filtered surface', async ({ page }) => {
   await captureVisual(page, 'visual-home-plugin-filter');
 });
 
-test('[P2] captures the home plugin detail surface', async ({ page }) => {
+test('[P2] @visual-community captures the home plugin detail surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
 
@@ -154,7 +154,7 @@ test('[P2] captures the home plugin detail surface', async ({ page }) => {
   await captureVisual(page, 'visual-plugin-details');
 });
 
-test('[P2] captures the plugin detail share menu surface', async ({ page }) => {
+test('[P2] @visual-community captures the plugin detail share menu surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
 
@@ -170,7 +170,7 @@ test('[P2] captures the plugin detail share menu surface', async ({ page }) => {
   await captureVisual(page, 'visual-plugin-share-menu');
 });
 
-test('[P2] captures the home context picker surface', async ({ page }) => {
+test('[P2] @visual-home-core captures the home context picker surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
 
@@ -181,7 +181,7 @@ test('[P2] captures the home context picker surface', async ({ page }) => {
   await captureVisual(page, 'visual-home-context-picker');
 });
 
-test('[P2] captures the home staged attachment surface', async ({ page }) => {
+test('[P2] @visual-home-core captures the home staged attachment surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
 
@@ -195,7 +195,7 @@ test('[P2] captures the home staged attachment surface', async ({ page }) => {
   await captureVisual(page, 'visual-home-staged-attachment');
 });
 
-test('[P2] captures the home plugin use staged surface', async ({ page }) => {
+test('[P2] @visual-community captures the home plugin use staged surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
 
@@ -209,7 +209,7 @@ test('[P2] captures the home plugin use staged surface', async ({ page }) => {
   await captureVisual(page, 'visual-home-plugin-use-staged');
 });
 
-test('[P2] captures the home plugin use with query surface', async ({ page }) => {
+test('[P2] @visual-community captures the home plugin use with query surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
 
@@ -233,7 +233,7 @@ test('[P2] captures the home plugin use with query surface', async ({ page }) =>
   await captureVisual(page, 'visual-home-plugin-use-with-query');
 });
 
-test('[P2] captures the new project modal surface', async ({ page }) => {
+test('[P2] @visual-home-core captures the new project modal surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
 
@@ -246,7 +246,7 @@ test('[P2] captures the new project modal surface', async ({ page }) => {
   await captureVisual(page, 'visual-new-project-modal');
 });
 
-test('[P2] captures the projects page surface', async ({ page }) => {
+test('[P2] @visual-navigation captures the projects page surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
 
@@ -261,7 +261,7 @@ test('[P2] captures the projects page surface', async ({ page }) => {
   await captureVisual(page, 'visual-projects');
 });
 
-test('[P2] captures the projects kanban surface', async ({ page }) => {
+test('[P2] @visual-navigation captures the projects kanban surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
 
@@ -276,7 +276,7 @@ test('[P2] captures the projects kanban surface', async ({ page }) => {
   await captureVisual(page, 'visual-projects-kanban');
 });
 
-test('[P2] captures the design systems page surface', async ({ page }) => {
+test('[P2] @visual-navigation captures the design systems page surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
 
@@ -292,7 +292,7 @@ test('[P2] captures the design systems page surface', async ({ page }) => {
   await captureVisual(page, 'visual-design-systems');
 });
 
-test('[P2] captures the design system detail preview surface', async ({ page }) => {
+test('[P2] @visual-navigation captures the design system detail preview surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
 
@@ -307,7 +307,7 @@ test('[P2] captures the design system detail preview surface', async ({ page }) 
   await captureVisual(page, 'visual-design-system-detail');
 });
 
-test('[P2] captures the plugins page surface', async ({ page }) => {
+test('[P2] @visual-navigation captures the plugins page surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
 
@@ -323,7 +323,7 @@ test('[P2] captures the plugins page surface', async ({ page }) => {
   await captureVisual(page, 'visual-plugins');
 });
 
-test('[P2] captures the integrations page surface', async ({ page }) => {
+test('[P2] @visual-navigation captures the integrations page surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
 
@@ -337,7 +337,7 @@ test('[P2] captures the integrations page surface', async ({ page }) => {
   await captureVisual(page, 'visual-integrations');
 });
 
-test('[P2] captures the integrations use everywhere surface', async ({ page }) => {
+test('[P2] @visual-navigation captures the integrations use everywhere surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
 
@@ -351,7 +351,7 @@ test('[P2] captures the integrations use everywhere surface', async ({ page }) =
   await captureVisual(page, 'visual-integrations-use-everywhere');
 });
 
-test('[P2] captures the integrations MCP surface', async ({ page }) => {
+test('[P2] @visual-navigation captures the integrations MCP surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
 
@@ -365,7 +365,7 @@ test('[P2] captures the integrations MCP surface', async ({ page }) => {
   await captureVisual(page, 'visual-integrations-mcp');
 });
 
-test('[P2] captures the tasks page surface', async ({ page }) => {
+test('[P2] @visual-navigation captures the tasks page surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
 
@@ -379,7 +379,7 @@ test('[P2] captures the tasks page surface', async ({ page }) => {
   await captureVisual(page, 'visual-tasks');
 });
 
-test('[P2] captures the project workspace surface', async ({ page }) => {
+test('[P2] @visual-workspace captures the project workspace surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
   await gotoVisualWorkspace(page);
@@ -391,7 +391,7 @@ test('[P2] captures the project workspace surface', async ({ page }) => {
   await captureVisual(page, 'visual-project-workspace');
 });
 
-test('[P2] captures the workspace staged contexts surface', async ({ page }) => {
+test('[P2] @visual-workspace captures the workspace staged contexts surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
   await gotoVisualWorkspace(page);
@@ -405,7 +405,7 @@ test('[P2] captures the workspace staged contexts surface', async ({ page }) => 
   await captureVisual(page, 'visual-workspace-staged-contexts');
 });
 
-test('[P1] @critical captures CSS hotspot workspace, preview, and settings surfaces', async ({ page }) => {
+test('[P1] @critical @visual-workspace captures CSS hotspot workspace, preview, and settings surfaces', async ({ page }) => {
   test.setTimeout(90_000);
 
   await configureVisualPage(page);
@@ -435,7 +435,7 @@ test('[P1] @critical captures CSS hotspot workspace, preview, and settings surfa
   await captureVisual(page, 'visual-critical-settings');
 });
 
-test('[P2] captures the topbar execution switcher surface', async ({ page }) => {
+test('[P2] @visual-topbar-avatar captures the topbar execution switcher surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
 
@@ -446,7 +446,7 @@ test('[P2] captures the topbar execution switcher surface', async ({ page }) => 
   await captureVisual(page, 'visual-topbar-execution-switcher');
 });
 
-test('[P2] captures the topbar local CLI model dropdown surface', async ({ page }) => {
+test('[P2] @visual-topbar-avatar captures the topbar local CLI model dropdown surface', async ({ page }) => {
   await configureVisualPage(page, {
     agents: VISUAL_CLI_AGENTS,
     config: {
@@ -465,7 +465,7 @@ test('[P2] captures the topbar local CLI model dropdown surface', async ({ page 
   await captureVisual(page, 'visual-topbar-local-cli-model-dropdown');
 });
 
-test('[P2] captures the topbar BYOK execution switcher surface', async ({ page }) => {
+test('[P2] @visual-topbar-avatar captures the topbar BYOK execution switcher surface', async ({ page }) => {
   await configureVisualPage(page, {
     config: {
       mode: 'api',
@@ -485,7 +485,7 @@ test('[P2] captures the topbar BYOK execution switcher surface', async ({ page }
   await captureVisual(page, 'visual-topbar-byok-switcher');
 });
 
-test('[P2] captures the topbar BYOK model dropdown surface', async ({ page }) => {
+test('[P2] @visual-topbar-avatar captures the topbar BYOK model dropdown surface', async ({ page }) => {
   await configureVisualPage(page, {
     config: {
       mode: 'api',
@@ -506,7 +506,7 @@ test('[P2] captures the topbar BYOK model dropdown surface', async ({ page }) =>
   await captureVisual(page, 'visual-topbar-byok-model-dropdown');
 });
 
-test('[P2] captures the avatar menu surface', async ({ page }) => {
+test('[P2] @visual-topbar-avatar captures the avatar menu surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
   await gotoVisualWorkspace(page);
@@ -519,7 +519,7 @@ test('[P2] captures the avatar menu surface', async ({ page }) => {
   await captureVisual(page, 'visual-avatar-menu');
 });
 
-test('[P1] Avatar menu exposes the AMR account wallet entry for the active AMR agent', async ({ page }) => {
+test('[P1] @visual-topbar-avatar Avatar menu exposes the AMR account wallet entry for the active AMR agent', async ({ page }) => {
   await configureVisualPage(page, {
     agents: [VISUAL_AMR_AGENT, ...VISUAL_CLI_AGENTS],
     config: {
@@ -542,7 +542,7 @@ test('[P1] Avatar menu exposes the AMR account wallet entry for the active AMR a
   );
 });
 
-test('[P2] captures the avatar local agent list surface', async ({ page }) => {
+test('[P2] @visual-topbar-avatar captures the avatar local agent list surface', async ({ page }) => {
   await configureVisualPage(page, {
     agents: VISUAL_CLI_AGENTS,
     config: {
@@ -560,7 +560,7 @@ test('[P2] captures the avatar local agent list surface', async ({ page }) => {
   await captureVisual(page, 'visual-avatar-local-agent-list');
 });
 
-test('[P2] captures the avatar local agent model dropdown surface', async ({ page }) => {
+test('[P2] @visual-topbar-avatar captures the avatar local agent model dropdown surface', async ({ page }) => {
   await configureVisualPage(page, {
     agents: VISUAL_CLI_AGENTS,
     config: {
@@ -581,7 +581,7 @@ test('[P2] captures the avatar local agent model dropdown surface', async ({ pag
   await captureVisual(page, 'visual-project-avatar-model-dropdown');
 });
 
-test('[P2] captures the settings execution surface', async ({ page }) => {
+test('[P2] @visual-settings captures the settings execution surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
   await gotoVisualWorkspace(page);
@@ -594,7 +594,7 @@ test('[P2] captures the settings execution surface', async ({ page }) => {
   await captureVisual(page, 'visual-settings-execution');
 });
 
-test('[P2] captures the settings local CLI surface', async ({ page }) => {
+test('[P2] @visual-settings captures the settings local CLI surface', async ({ page }) => {
   await configureVisualPage(page, {
     agents: VISUAL_CLI_AGENTS,
     config: {
@@ -613,7 +613,7 @@ test('[P2] captures the settings local CLI surface', async ({ page }) => {
   await captureVisual(page, 'visual-settings-local-cli');
 });
 
-test('[P2] captures the settings local CLI model dropdown surface', async ({ page }) => {
+test('[P2] @visual-settings captures the settings local CLI model dropdown surface', async ({ page }) => {
   await configureVisualPage(page, {
     agents: VISUAL_CLI_AGENTS,
     config: {
@@ -637,7 +637,7 @@ test('[P2] captures the settings local CLI model dropdown surface', async ({ pag
   await captureVisual(page, 'visual-settings-local-cli-model-dropdown');
 });
 
-test('[P2] captures the settings BYOK surface', async ({ page }) => {
+test('[P2] @visual-settings captures the settings BYOK surface', async ({ page }) => {
   await configureVisualPage(page);
   await gotoVisualHome(page);
   await gotoVisualWorkspace(page);
@@ -651,7 +651,7 @@ test('[P2] captures the settings BYOK surface', async ({ page }) => {
   await captureVisual(page, 'visual-settings-byok');
 });
 
-test('[P2] captures the settings BYOK OpenAI surface', async ({ page }) => {
+test('[P2] @visual-settings captures the settings BYOK OpenAI surface', async ({ page }) => {
   await configureVisualPage(page, {
     config: {
       mode: 'api',
@@ -674,7 +674,7 @@ test('[P2] captures the settings BYOK OpenAI surface', async ({ page }) => {
   await captureVisual(page, 'visual-settings-byok-openai');
 });
 
-test('[P2] captures the settings BYOK model dropdown surface', async ({ page }) => {
+test('[P2] @visual-settings captures the settings BYOK model dropdown surface', async ({ page }) => {
   await configureVisualPage(page, {
     config: {
       mode: 'api',
