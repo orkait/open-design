@@ -97,6 +97,55 @@ describe('AmrAccountControl', () => {
     expect(screen.queryByRole('button')).toBeNull();
   });
 
+  it('surfaces the activation URL + code while signing in so the user can finish manually', () => {
+    renderAccountControl({
+      status: 'signing-in',
+      compact: true,
+      activationUrl: 'https://app.vela.example/device?user_code=AB12-CD34',
+      userCode: 'AB12-CD34',
+      onSignIn: vi.fn(),
+    });
+
+    const link = screen.getByRole('link', { name: 'Open sign-in page' });
+    expect(link.getAttribute('href')).toBe(
+      'https://app.vela.example/device?user_code=AB12-CD34',
+    );
+    // The user code is offered with a copy affordance.
+    expect(screen.getByText('AB12-CD34')).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Copy verification code' }),
+    ).toBeTruthy();
+  });
+
+  it('shows the browser-failed hint when vela could not open the browser', () => {
+    renderAccountControl({
+      status: 'signing-in',
+      compact: true,
+      activationUrl: 'https://app.vela.example/device?user_code=AB12-CD34',
+      userCode: 'AB12-CD34',
+      browserOpenFailed: true,
+      onSignIn: vi.fn(),
+    });
+
+    expect(
+      screen.getByText(
+        'Couldn’t open your browser automatically. Open the sign-in page below to continue.',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('does not render the activation block before vela has printed a URL', () => {
+    renderAccountControl({
+      status: 'signing-in',
+      compact: true,
+      onSignIn: vi.fn(),
+    });
+
+    expect(
+      screen.queryByRole('link', { name: 'Open sign-in page' }),
+    ).toBeNull();
+  });
+
   it('renders the signed-in email without profile fallback details', () => {
     renderAccountControl({
       status: 'signed-in',

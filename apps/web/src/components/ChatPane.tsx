@@ -42,6 +42,7 @@ import { exactDateTime, messageTime, shortTime } from '../utils/chatTime';
 import { commentTargetDisplayName, commentsToAttachments, simplePositionLabel } from '../comments';
 import { AssistantMessage, type QuestionFormOpenRequest } from './AssistantMessage';
 import { AmrGuidance } from './AmrGuidance';
+import { AmrLoginPill } from './AmrLoginPill';
 import { amrRechargeUrlForProfile, resolveRunFailureUi } from '../runtime/amr-guidance';
 import { RESUME_CONTINUE_PROMPT } from '../runtime/resume';
 import {
@@ -747,6 +748,10 @@ export function ChatPane({
   const analytics = useAnalytics();
   const amrProfile = config?.agentCliEnv?.amr?.[AMR_PROFILE_ENV_KEY] ?? null;
   const logRef = useRef<HTMLDivElement | null>(null);
+  // Guards the inline AMR sign-in card so a successful login auto-retries the
+  // failed run exactly once (the pill's onStatusChange fires loggedIn on every
+  // poll). Keyed by the failed assistant's id.
+  const amrAuthRetriedRef = useRef<string | null>(null);
   const chatLogScrollIdleTimerRef = useRef<number | null>(null);
   const historyWrapRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<ChatComposerHandle | null>(null);
@@ -1987,28 +1992,26 @@ export function ChatPane({
                       {retryAssistant && onRetry && runFailureUi ? (
                         <>
                           {runFailureUi.primaryAction === 'authorize' ? (
-                            <button
-                              type="button"
-                              className="chat-error-action"
-                              onClick={() => {
-                                recordAmrEntry(
-                                  analytics.track,
-                                  'chat_error_authorize_retry',
-                                  new Date(),
-                                  {
-                                    metricsConsent:
-                                      config?.telemetry?.metrics === true,
-                                  },
-                                );
-                                if (onSwitchToAmrAndRetry) {
-                                  onSwitchToAmrAndRetry(retryAssistant);
-                                } else {
-                                  onOpenAmrSettings?.();
+                            // Sign in to AMR inline — the pill drives vela login,
+                            // surfaces the activation URL/code when the browser
+                            // doesn't auto-open, and on success we retry the run
+                            // without bouncing the user out to Settings.
+                            <AmrLoginPill
+                              className="chat-error-amr-login"
+                              signInLabel={t('chat.amrError.authorizeCta')}
+                              amrEntrySourceDetail="chat_error_authorize_retry"
+                              hideSignedOutStatus
+                              revealPendingCancelAction
+                              onStatusChange={(loginStatus) => {
+                                if (
+                                  loginStatus?.loggedIn &&
+                                  amrAuthRetriedRef.current !== retryAssistant.id
+                                ) {
+                                  amrAuthRetriedRef.current = retryAssistant.id;
+                                  onRetry(retryAssistant);
                                 }
                               }}
-                            >
-                              {t('chat.amrError.authorizeCta')}
-                            </button>
+                            />
                           ) : runFailureUi.primaryAction === 'launch-terminal-auth' ? (
                             <button
                               type="button"

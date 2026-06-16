@@ -72,6 +72,12 @@ export interface AmrAccountControlProps {
   showConsoleAction?: boolean;
   consoleUrl?: string;
   showCancelSignInAction?: boolean;
+  // Device-authorization details surfaced while signing in, so the user can
+  // complete login manually when the browser did not auto-open (see
+  // parseVelaLoginActivation in the daemon's vela.ts).
+  activationUrl?: string;
+  userCode?: string;
+  browserOpenFailed?: boolean;
   onSignIn?: (event: MouseEvent<HTMLButtonElement>) => void;
   onSignOut?: (event: MouseEvent<HTMLButtonElement>) => void;
   onCancelSignIn?: (event: MouseEvent<HTMLButtonElement>) => void;
@@ -113,6 +119,9 @@ export function AmrAccountControl({
   showConsoleAction = false,
   consoleUrl,
   showCancelSignInAction = false,
+  activationUrl,
+  userCode,
+  browserOpenFailed = false,
   onSignIn,
   onSignOut,
   onCancelSignIn,
@@ -122,6 +131,7 @@ export function AmrAccountControl({
   cancelSignInDisabled = false,
 }: AmrAccountControlProps) {
   const { t } = useI18n();
+  const [codeCopied, setCodeCopied] = useState(false);
   const isSignedIn = status === 'signed-in';
   const isSigningIn = status === 'signing-in';
   const isCanceled = status === 'canceled';
@@ -211,6 +221,46 @@ export function AmrAccountControl({
         <span className="amr-account-control__error" role="alert">
           {loginErrorText}
         </span>
+      ) : null}
+      {isSigningIn && activationUrl ? (
+        <div className="amr-login-activation" role="group">
+          <span className="amr-login-activation__hint">
+            {browserOpenFailed
+              ? t('settings.amrActivationBrowserFailed')
+              : t('settings.amrActivationHint')}
+          </span>
+          <div className="amr-login-activation__actions">
+            <a
+              className="amr-login-activation__open"
+              href={activationUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t('settings.amrActivationOpen')}
+            </a>
+            {userCode ? (
+              <button
+                type="button"
+                className="amr-login-activation__code"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(userCode).then(
+                    () => setCodeCopied(true),
+                    () => {},
+                  );
+                }}
+                aria-label={t('settings.amrActivationCopyCode')}
+                title={t('settings.amrActivationCopyCode')}
+              >
+                <span className="amr-login-activation__code-value">{userCode}</span>
+                <span className="amr-login-activation__code-action">
+                  {codeCopied
+                    ? t('settings.amrActivationCopied')
+                    : t('settings.amrActivationCopy')}
+                </span>
+              </button>
+            ) : null}
+          </div>
+        </div>
       ) : null}
     </div>
   );
@@ -554,6 +604,9 @@ export function AmrLoginPill({
         signOutDisabled={logoutInFlight}
         showCancelSignInAction={revealPendingCancelAction && loginInFlight}
         cancelSignInDisabled={cancelInFlight}
+        activationUrl={status?.activationUrl}
+        userCode={status?.userCode}
+        browserOpenFailed={status?.browserOpenFailed}
         onSignIn={handleLogin}
         onSignOut={handleLogout}
         onCancelSignIn={handleCancelLogin}
