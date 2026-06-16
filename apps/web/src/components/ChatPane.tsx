@@ -457,6 +457,8 @@ interface Props {
   ) => void;
   onRetry?: (assistantMessage: ChatMessage) => void;
   onResumeRun?: (assistantMessage: ChatMessage) => void;
+  onAmrRecoveryResume?: (assistantMessage: ChatMessage) => void;
+  onAmrRecoveryCancel?: (assistantMessage: ChatMessage) => void;
   onStop: () => void;
   // Skills available for @-mention assembly. ProjectView filters out the
   // user's disabled set before passing them in here.
@@ -666,6 +668,8 @@ export function ChatPane({
   onSend,
   onRetry,
   onResumeRun,
+  onAmrRecoveryResume,
+  onAmrRecoveryCancel,
   onStop,
   onRemoveQueuedSend,
   onUpdateQueuedSend,
@@ -786,6 +790,8 @@ export function ChatPane({
     onArtifactShare,
     onForkFromMessage,
     onShareToOpenDesign,
+    onAmrRecoveryResume,
+    onAmrRecoveryCancel,
   });
   assistantCallbacksRef.current = {
     onContinueRemainingTasks,
@@ -793,6 +799,8 @@ export function ChatPane({
     onArtifactShare,
     onForkFromMessage,
     onShareToOpenDesign,
+    onAmrRecoveryResume,
+    onAmrRecoveryCancel,
   };
   // Featured design-toolbox follow-up rows on the assistant "next step" card.
   // The toolbox left the "+" menu, so these route straight into the composer
@@ -1946,6 +1954,8 @@ export function ChatPane({
                 assistantCallbacksRef={assistantCallbacksRef}
                 onContinueRemainingTasks={onContinueRemainingTasks}
                 onArtifactShare={onArtifactShare}
+                onAmrRecoveryResume={onAmrRecoveryResume}
+                onAmrRecoveryCancel={onAmrRecoveryCancel}
                 onToolboxAction={handleToolboxAction}
                 onPickSkill={handlePickSkill}
                 onArtifactDownload={onArtifactDownload}
@@ -2187,6 +2197,8 @@ interface AssistantCallbacks {
   onArtifactShare: ((fileName: string) => void) | undefined;
   onForkFromMessage: ((message: ChatMessage) => void) | undefined;
   onShareToOpenDesign: ((assistantMessageId: string) => void) | undefined;
+  onAmrRecoveryResume: ((message: ChatMessage) => void) | undefined;
+  onAmrRecoveryCancel: ((message: ChatMessage) => void) | undefined;
 }
 
 type ChatRenderItem = {
@@ -2242,6 +2254,8 @@ function ChatRows({
   assistantCallbacksRef,
   onContinueRemainingTasks,
   onArtifactShare,
+  onAmrRecoveryResume,
+  onAmrRecoveryCancel,
   onToolboxAction,
   onPickSkill,
   onArtifactDownload,
@@ -2282,6 +2296,8 @@ function ChatRows({
   assistantCallbacksRef: MutableRefObject<AssistantCallbacks>;
   onContinueRemainingTasks?: (assistantMessage: ChatMessage, todos: TodoItem[]) => void;
   onArtifactShare?: (fileName: string) => void;
+  onAmrRecoveryResume?: (message: ChatMessage) => void;
+  onAmrRecoveryCancel?: (message: ChatMessage) => void;
   onToolboxAction?: (id: DesignToolboxActionId) => void;
   onPickSkill?: (skillId: string) => void;
   onArtifactDownload?: (fileName: string) => void;
@@ -2401,6 +2417,16 @@ function ChatRows({
         onArtifactShare={
           onArtifactShare
             ? (fileName) => assistantCallbacksRef.current.onArtifactShare?.(fileName)
+            : undefined
+        }
+        onAmrRecoveryResume={
+          onAmrRecoveryResume
+            ? () => assistantCallbacksRef.current.onAmrRecoveryResume?.(m)
+            : undefined
+        }
+        onAmrRecoveryCancel={
+          onAmrRecoveryCancel
+            ? () => assistantCallbacksRef.current.onAmrRecoveryCancel?.(m)
             : undefined
         }
         onToolboxAction={onToolboxAction}

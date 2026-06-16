@@ -83,6 +83,7 @@ export function createChatRunService({
       signal: null,
       error: null,
       errorCode: null,
+      amrRecovery: null,
       cancelRequested: false,
       eventsLogPath: runsLogDir ? path.join(runsLogDir, id, 'events.jsonl') : null,
       eventsLogStream: null,
@@ -127,6 +128,9 @@ export function createChatRunService({
       if (details.error) run.error = details.error;
       if (details.errorCode) run.errorCode = details.errorCode;
     }
+    if (event === 'amr_recovery' && data?.recovery) {
+      run.amrRecovery = data.recovery;
+    }
     const id = run.nextEventId++;
     const record = { id, event, data, timestamp: Date.now() };
     run.events.push(record);
@@ -165,6 +169,7 @@ export function createChatRunService({
     signal: run.signal,
     error: run.error ?? null,
     errorCode: run.errorCode ?? null,
+    amrRecovery: run.amrRecovery ?? null,
     resumable: run.resumable ?? false,
     eventsLogPath: run.eventsLogPath ?? null,
     mediaExecution: run.mediaExecution ?? normalizeMediaExecutionPolicyForRun(null),

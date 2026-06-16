@@ -128,7 +128,7 @@ import {
   type SaveMessageOptions,
   waitGeneratedPluginShareTask,
 } from '../state/projects';
-import type { AppliedPluginSnapshot, ChatAnalyticsEntryFrom, ChatSessionMode, InstalledPluginRecord, WorkspaceContextItem } from '@open-design/contracts';
+import type { AmrCloudRecoveryOverlay, AppliedPluginSnapshot, ChatAnalyticsEntryFrom, ChatSessionMode, InstalledPluginRecord, WorkspaceContextItem } from '@open-design/contracts';
 import type {
   AgentEvent,
   AgentInfo,
@@ -2622,6 +2622,7 @@ export function ProjectView({
             ...prev,
             runStatus: status.status,
             ...(status.resumable !== undefined ? { resumable: status.resumable } : {}),
+            ...(status.amrRecovery ? { amrRecovery: status.amrRecovery } : {}),
           }),
           true,
         );
@@ -2850,6 +2851,13 @@ export function ProjectView({
               reattachCancelControllersRef.current.delete(runId);
               clearCurrentRunStreamingMarker(reattachConversationId, controller, cancelController);
               persistNow({ telemetryFinalized: true });
+            },
+            onAmrRecovery: (amrRecovery) => {
+              updateMessageById(
+                message.id,
+                (prev) => ({ ...prev, amrRecovery }),
+                true,
+              );
             },
           },
           onRunStatus: (runStatus) => {
@@ -3610,6 +3618,10 @@ export function ProjectView({
           });
           void refreshProjectFiles();
         },
+        onAmrRecovery: (amrRecovery: AmrCloudRecoveryOverlay) => {
+          updateAssistant((prev) => ({ ...prev, amrRecovery }));
+          persistAssistantSoon();
+        },
       };
 
       if (config.mode === 'daemon') {
@@ -4041,6 +4053,57 @@ export function ProjectView({
       void handleSend(RESUME_CONTINUE_PROMPT, [], [], { entryFrom: 'resume_continue' });
     },
     [currentConversationActionDisabled, handleSend],
+  );
+
+  const handleAmrRecoveryResume = useCallback(
+    (assistantMessage: ChatMessage) => {
+      if (!assistantMessage.runId || currentConversationActionDisabled) return;
+      void (async () => {
+        const resp = await fetch(`/api/runs/${encodeURIComponent(assistantMessage.runId!)}/amr-recovery/resume`, {
+          method: 'POST',
+        });
+        const body = await resp.json().catch(() => null) as {
+          amrRecovery?: ChatMessage['amrRecovery'];
+          runId?: string;
+          run?: { id?: string; status?: ChatMessage['runStatus'] };
+        } | null;
+        if (!resp.ok || !body?.amrRecovery) return;
+        updateMessageById(
+          assistantMessage.id,
+          (prev) => ({
+            ...prev,
+            amrRecovery: body.amrRecovery,
+            runId: body.run?.id ?? body.runId ?? prev.runId,
+            runStatus: body.run?.status ?? prev.runStatus,
+            endedAt: body.run?.status === 'queued' || body.run?.status === 'running'
+              ? undefined
+              : prev.endedAt,
+          }),
+          true,
+        );
+      })();
+    },
+    [currentConversationActionDisabled, updateMessageById],
+  );
+
+  const handleAmrRecoveryCancel = useCallback(
+    (assistantMessage: ChatMessage) => {
+      if (!assistantMessage.runId) return;
+      void (async () => {
+        const resp = await fetch(`/api/runs/${encodeURIComponent(assistantMessage.runId!)}/amr-recovery/cancel`, {
+          method: 'POST',
+        });
+        const body = await resp.json().catch(() => null) as { amrRecovery?: ChatMessage['amrRecovery'] } | null;
+        if (!resp.ok || !body?.amrRecovery) return;
+        updateMessageById(
+          assistantMessage.id,
+          (prev) => ({ ...prev, amrRecovery: body.amrRecovery, runStatus: 'canceled' }),
+          true,
+          { telemetryFinalized: true },
+        );
+      })();
+    },
+    [updateMessageById],
   );
 
   // "Switch to AMR & retry" from the failed-run card: switch the run to AMR,
@@ -5640,6 +5703,8 @@ export function ProjectView({
               onSend={handleSend}
               onRetry={handleRetry}
               onResumeRun={handleResumeRun}
+              onAmrRecoveryResume={handleAmrRecoveryResume}
+              onAmrRecoveryCancel={handleAmrRecoveryCancel}
               onStop={handleStop}
               onRemoveQueuedSend={removeQueuedChatSend}
               onUpdateQueuedSend={updateQueuedChatSend}
