@@ -9,11 +9,13 @@
 //                                 project (browser tab + seeded prompt). JSON.
 //   POST /api/brands/:id/finalize — register the agent's brand kit. JSON.
 
+import fs from 'node:fs';
 import path from 'node:path';
 
 import type { Application, Request, Response } from 'express';
 
-import type { insertProject } from './db.js';
+import { getProject, type insertProject } from './db.js';
+import { resolveProjectDir } from './projects.js';
 import {
   finalizeBrand,
   listBrandSummaries,
@@ -45,16 +47,7 @@ export interface BrandRoutesDeps {
   randomId?: () => string;
 }
 
-/** Content-Type for the served primary logo, keyed by file extension. */
-const LOGO_CONTENT_TYPES: Record<string, string> = {
-  '.svg': 'image/svg+xml',
-  '.png': 'image/png',
-  '.webp': 'image/webp',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.gif': 'image/gif',
-  '.ico': 'image/x-icon',
-};
+const LOGO_EXT_PRIORITY = ['.svg', '.png', '.webp', '.jpg', '.jpeg', '.gif', '.ico'];
 
 export function registerBrandRoutes(app: Application, deps: BrandRoutesDeps): void {
   const { brandsRoot, userDesignSystemsRoot, projectsRoot, skillsRoot, dataDir, db, randomId } = deps;
@@ -185,15 +178,16 @@ export function registerBrandRoutes(app: Application, deps: BrandRoutesDeps): vo
   // GET /api/brands/:id/logo — serve the primary logo image. 404 if none.
   app.get('/api/brands/:id/logo', (req: Request, res: Response) => {
     try {
-      const logoPath = resolveBrandLogoPath(brandsRoot, String(req.params.id));
+      const id = String(req.params.id);
+      const logoPath =
+        resolveBrandLogoPath(brandsRoot, id)
+        ?? resolveBackingProjectLogoPath({ brandsRoot, projectsRoot, db }, id);
       if (!logoPath) {
         res.status(404).json({ error: 'logo not found' });
         return;
       }
-      const contentType = LOGO_CONTENT_TYPES[path.extname(logoPath).toLowerCase()];
-      if (contentType) res.type(contentType);
       res.setHeader('Cache-Control', 'no-cache');
-      res.sendFile(logoPath, (err) => {
+      res.sendFile(logoPath, { dotfiles: 'allow' }, (err) => {
         if (err && !res.headersSent) {
           res.status(404).json({ error: 'logo not found' });
         }
@@ -202,4 +196,84 @@ export function registerBrandRoutes(app: Application, deps: BrandRoutesDeps): vo
       res.status(500).json({ error: String(err) });
     }
   });
+}
+
+function resolveBackingProjectLogoPath(
+  deps: Pick<BrandRoutesDeps, 'brandsRoot' | 'projectsRoot' | 'db'>,
+  id: string,
+): string | null {
+  const detail = readBrandDetail(deps.brandsRoot, id);
+  const projectId = detail?.meta.projectId;
+  if (!projectId) return null;
+  const project = getProject(deps.db, projectId);
+  if (!project) return null;
+  const projectRoot = resolveProjectDir(deps.projectsRoot, projectId, project.metadata);
+  const primary = detail.brand?.logo?.primary;
+  if (primary) {
+    const abs = resolveProjectLogoFile(projectRoot, primary);
+    if (abs) return abs;
+  }
+
+  const logosDir = resolveProjectLogoDirectory(projectRoot, 'logos');
+  if (!logosDir) return null;
+  let names: string[];
+  try {
+    names = fs.readdirSync(logosDir);
+  } catch {
+    return null;
+  }
+  const pick = names
+    .filter((name) => isKnownLogoFile(path.join(logosDir, name)))
+    .sort((a, b) => extRank(a) - extRank(b) || a.localeCompare(b))[0];
+  return pick ? path.join(logosDir, pick) : null;
+}
+
+function resolveProjectLogoFile(projectRoot: string, relPath: string): string | null {
+  const abs = resolveProjectLogoPath(projectRoot, relPath);
+  return abs && isKnownLogoFile(abs) ? abs : null;
+}
+
+function resolveProjectLogoDirectory(projectRoot: string, relPath: string): string | null {
+  const abs = resolveProjectLogoPath(projectRoot, relPath);
+  return abs && isDirectory(abs) ? abs : null;
+}
+
+function resolveProjectLogoPath(projectRoot: string, relPath: string): string | null {
+  const segments = relPath.replace(/^\.?\/+/, '').split('/').filter(Boolean);
+  if (
+    segments.length === 0
+    || segments.some((segment) => segment === '..' || segment.includes('\\') || segment.includes('\0'))
+    || segments[0] !== 'logos'
+  ) {
+    return null;
+  }
+  const root = path.resolve(projectRoot);
+  const abs = path.resolve(root, ...segments);
+  if (abs !== root && !abs.startsWith(`${root}${path.sep}`)) return null;
+  return abs;
+}
+
+function extRank(name: string): number {
+  const i = LOGO_EXT_PRIORITY.indexOf(path.extname(name).toLowerCase());
+  return i === -1 ? LOGO_EXT_PRIORITY.length : i;
+}
+
+function isFile(p: string): boolean {
+  try {
+    return fs.statSync(p).isFile();
+  } catch {
+    return false;
+  }
+}
+
+function isKnownLogoFile(p: string): boolean {
+  return extRank(p) < LOGO_EXT_PRIORITY.length && isFile(p);
+}
+
+function isDirectory(p: string): boolean {
+  try {
+    return fs.statSync(p).isDirectory();
+  } catch {
+    return false;
+  }
 }
