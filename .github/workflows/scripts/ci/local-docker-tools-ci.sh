@@ -142,7 +142,14 @@ case "$profile" in
 esac
 image_ref="${OPEN_DESIGN_CI_IMAGE_REF:-$default_image_ref}"
 run_root="$repo_root/.tmp/workflows/ci-gate/runs/$run_id"
-tool_root="$repo_root/.tmp/tools-ci"
+default_tool_root="$repo_root/.tmp/tools-ci"
+default_runner_cache_root=""
+if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+  default_runner_cache_root="${HOME:-/home/runner}/.cache/open-design-ci"
+  default_tool_root="$default_runner_cache_root/tools-ci"
+fi
+runner_cache_root="${OPEN_DESIGN_CI_RUNNER_CACHE_ROOT:-$default_runner_cache_root}"
+tool_root="${OPEN_DESIGN_CI_TOOL_ROOT:-$default_tool_root}"
 selection_path="$tool_root/selections/$run_id.json"
 head_sha="$(git -C "$repo_root" rev-parse HEAD 2>/dev/null || printf 'unknown')"
 host_uid="$(id -u)"
@@ -166,6 +173,19 @@ if ! node --experimental-strip-types "$repo_root/packages/metatool/src/cli.ts" c
 fi
 
 mkdir -p "$run_root" "$tool_root/selections"
+docker_cache_env=()
+docker_cache_volumes=()
+if [ -n "$runner_cache_root" ]; then
+  mkdir -p "$runner_cache_root/corepack" "$runner_cache_root/pnpm-store" "$runner_cache_root/tools-ci"
+  docker_cache_env=(
+    --env COREPACK_HOME=/runner-cache/corepack
+    --env OD_CI_CACHE_DIR=/runner-cache
+    --env npm_config_store_dir=/runner-cache/pnpm-store
+  )
+  docker_cache_volumes=(
+    --volume "$runner_cache_root:/runner-cache"
+  )
+fi
 
 docker_profile_args=()
 docker_profile_env=()
@@ -217,10 +237,12 @@ docker run --rm \
   --volume "$repo_root:/repo-src:ro" \
   --volume "$repo_root/.tmp/workflows/ci-gate:/evidence" \
   --volume "$tool_root:/tool" \
+  "${docker_cache_volumes[@]}" \
   "${docker_profile_volumes[@]}" \
   --workdir /repo-src \
   --env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
   --env HOME=/tool/home \
+  "${docker_cache_env[@]}" \
   --env OD_CI_ATOM_MANIFEST=/repo-src/tools/ci/atoms.json \
   --env OD_CI_EVIDENCE_ROOT=/evidence \
   --env OD_CI_HEAD_SHA="$head_sha" \

@@ -227,6 +227,17 @@ function workspaceSetupTimeoutSeconds(): number {
   return parsed;
 }
 
+function workspaceInstallArgs(): string[] {
+  const mode = process.env.OD_CI_PNPM_INSTALL_MODE;
+  if (mode == null || mode.length === 0 || mode === "prefer-offline") {
+    return ["install", "--frozen-lockfile", "--prefer-offline", "--network-concurrency=8"];
+  }
+  if (mode === "offline") {
+    return ["install", "--frozen-lockfile", "--offline", "--network-concurrency=8"];
+  }
+  throw new Error(`OD_CI_PNPM_INSTALL_MODE must be prefer-offline or offline: ${mode}`);
+}
+
 async function runWorkspaceSetup(
   envelope: NormalizedEnvelope,
   atoms: AtomDefinition[],
@@ -272,7 +283,7 @@ async function runWorkspaceSetup(
 
     if (exitCode === 0 && !timedOut) {
       const install = await runProcess({
-        args: ["install", "--frozen-lockfile", "--prefer-offline", "--network-concurrency=8"],
+        args: workspaceInstallArgs(),
         command: "pnpm",
         cwd: envelope.workDir,
         env,

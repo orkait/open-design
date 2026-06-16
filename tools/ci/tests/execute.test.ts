@@ -343,6 +343,89 @@ test("executeAtoms can provide a pnpm shim through corepack", async () => {
   }
 });
 
+test("executeAtoms can run workspace setup in offline install mode", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tools-ci-offline-install-"));
+  const originalPath = process.env.PATH;
+  const originalInstallMode = process.env.OD_CI_PNPM_INSTALL_MODE;
+  try {
+    const workDir = join(root, "work");
+    const resultsDir = join(root, "results");
+    const artifactsDir = join(root, "artifacts");
+    const cacheDir = join(root, "cache");
+    const tmpDir = join(root, "tmp");
+    const binDir = join(root, "bin");
+    const actionsDir = join(workDir, ".github", "workflows", "scripts", "ci", "actions");
+    await mkdir(actionsDir, { recursive: true });
+    await mkdir(binDir, { recursive: true });
+    await writeFile(join(workDir, "package.json"), `${JSON.stringify({ packageManager: "pnpm@10.33.2" })}\n`, "utf8");
+    await writeFile(join(actionsDir, "guard.sh"), "#!/usr/bin/env bash\nset -euo pipefail\nprintf 'guard\\n'\n", "utf8");
+    await writeFile(join(binDir, "corepack"), "#!/usr/bin/env bash\nset -euo pipefail\nprintf 'corepack %s\\n' \"$*\"\n", "utf8");
+    await writeFile(join(binDir, "pnpm"), "#!/usr/bin/env bash\nset -euo pipefail\nprintf 'pnpm %s\\n' \"$*\"\n", "utf8");
+    await chmod(join(binDir, "corepack"), 0o755);
+    await chmod(join(binDir, "pnpm"), 0o755);
+    process.env.PATH = `${binDir}${process.platform === "win32" ? ";" : ":"}${originalPath ?? ""}`;
+    process.env.OD_CI_PNPM_INSTALL_MODE = "offline";
+
+    const manifest = parseAtomManifest({
+      schemaVersion: 1,
+      atoms: [
+        {
+          artifactProfile: "standard",
+          cacheProfile: "node-pnpm",
+          call: "pnpm guard",
+          domain: "workspace",
+          key: "guard",
+          name: "guard",
+          requires: ["node"],
+          resultRequired: true,
+          script: ".github/workflows/scripts/ci/actions/guard.sh",
+          setup: "pnpm-workspace",
+          timeoutSeconds: 5,
+        },
+      ],
+    });
+
+    await executeAtoms({
+      envelope: {
+        artifactsDir,
+        cacheDir,
+        capabilitiesPath: join(root, "capabilities.json"),
+        eventName: "workflow_dispatch",
+        headSha: "abc123",
+        manifestPath: join(root, "atoms.json"),
+        mode: "default",
+        providerId: "test",
+        repoDir: workDir,
+        resultsDir,
+        runAttempt: "1",
+        runId: "local",
+        tmpDir,
+        workDir,
+      },
+      manifest,
+      selection: {
+        provider: "test",
+        schemaVersion: 1,
+        selectedAtoms: ["guard"],
+        unavailable: [],
+      },
+    });
+
+    assert.match(
+      await readFile(join(resultsDir, "logs", "setup", "workspace", "stdout.log"), "utf8"),
+      /pnpm install --frozen-lockfile --offline --network-concurrency=8/,
+    );
+  } finally {
+    process.env.PATH = originalPath;
+    if (originalInstallMode == null) {
+      delete process.env.OD_CI_PNPM_INSTALL_MODE;
+    } else {
+      process.env.OD_CI_PNPM_INSTALL_MODE = originalInstallMode;
+    }
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("executeAtoms prepares a writable copied work directory", async () => {
   const root = await mkdtemp(join(tmpdir(), "tools-ci-workdir-"));
   try {
