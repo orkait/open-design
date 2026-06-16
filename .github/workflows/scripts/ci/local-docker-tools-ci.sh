@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 usage() {
   cat <<'EOF' >&2
-usage: local-docker-tools-ci.sh [--profile ci-base|ci-playwright|nix-capable] <run-id> [atom...]
+usage: local-docker-tools-ci.sh [--provider <provider>] [--profile ci-base|ci-playwright|nix-capable] <run-id> [atom...]
 
 Default ci-base atoms:
   guard i18n
@@ -37,9 +37,14 @@ EOF
 }
 
 profile="ci-base"
+provider="local-docker"
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
+    --provider)
+      provider="${2:-}"
+      shift 2
+      ;;
     --profile)
       profile="${2:-}"
       shift 2
@@ -64,6 +69,13 @@ done
 if [ "$#" -lt 1 ]; then
   usage
 fi
+
+case "$provider" in
+  ''|*/*|*' '*|*'..'*)
+    echo "provider must be a simple identifier" >&2
+    exit 2
+    ;;
+esac
 
 case "$profile" in
   ci-base|ci-playwright|nix-capable)
@@ -142,9 +154,15 @@ if [ ! -f "$repo_root/package.json" ]; then
   exit 1
 fi
 
-if [ ! -f "$repo_root/tools/ci/dist/index.mjs" ]; then
-  echo "tools-ci dist is missing; run pnpm --filter @open-design/tools-ci build first" >&2
-  exit 1
+if ! node --experimental-strip-types "$repo_root/packages/metatool/src/cli.ts" check "$repo_root/tools/ci" >/dev/null 2>&1; then
+  package_manager="$(node -p "JSON.parse(require('node:fs').readFileSync('$repo_root/package.json', 'utf8')).packageManager")"
+  echo "tools-ci dist is missing or stale; installing workspace and rebuilding tools-ci"
+  (
+    cd "$repo_root"
+    corepack prepare "$package_manager" --activate
+    corepack pnpm install --frozen-lockfile --prefer-offline --network-concurrency=8
+    corepack pnpm --filter @open-design/tools-ci build
+  )
 fi
 
 mkdir -p "$run_root" "$tool_root/selections"
@@ -174,17 +192,16 @@ if [ "$profile" = "nix-capable" ]; then
     --env CI_GATE_NIX_FLAKE_REF="path:/tmp/tools-ci-work/$run_id"
     --env $'NIX_CONFIG=experimental-features = nix-command flakes\nmax-jobs = 1\ncores = 1\nhttp-connections = 1'
   )
-  ci_mode="nix"
 fi
 
-node - "$selection_path" "${selected_atoms[@]}" <<'NODE'
+OD_CI_PROVIDER_ID="$provider" node - "$selection_path" "${selected_atoms[@]}" <<'NODE'
 const { writeFileSync } = require("node:fs");
 
 const [selectionPath, ...selectedAtoms] = process.argv.slice(2);
 writeFileSync(
   selectionPath,
   `${JSON.stringify({
-    provider: "local-docker",
+    provider: process.env.OD_CI_PROVIDER_ID ?? "local-docker",
     schemaVersion: 1,
     selectedAtoms,
     unavailable: [],
@@ -209,7 +226,7 @@ docker run --rm \
   --env OD_CI_HEAD_SHA="$head_sha" \
   --env OD_CI_MODE="$ci_mode" \
   --env OD_CI_PROFILE="$profile" \
-  --env OD_CI_PROVIDER_ID=local-docker \
+  --env OD_CI_PROVIDER_ID="$provider" \
   --env OD_CI_REPO_DIR=/repo-src \
   --env OD_CI_RUN_ATTEMPT=1 \
   --env OD_CI_RUN_ID="$run_id" \

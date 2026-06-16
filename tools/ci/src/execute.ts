@@ -571,7 +571,11 @@ export async function executeAtoms(options: ExecuteAtomsOptions): Promise<CiExec
     }
     return atom;
   });
+  process.stdout.write(`tools-ci execute setup: ${selectedAtoms.map((atom) => atom.name).join(", ")}\n`);
   const setupResult = await runWorkspaceSetup(envelope, selectedAtoms);
+  if (setupResult != null) {
+    process.stdout.write(`tools-ci execute setup ${setupResult.status}: workspace (${setupResult.exitCode})\n`);
+  }
 
   const actions: AtomExecutionResult[] = [];
   for (const entry of options.selection.unavailable) {
@@ -583,10 +587,15 @@ export async function executeAtoms(options: ExecuteAtomsOptions): Promise<CiExec
   }
 
   for (const atom of selectedAtoms) {
+    process.stdout.write(`tools-ci atom start: ${atom.name}\n`);
     if (setupResult?.status === "failure" && needsWorkspaceSetup(atom)) {
-      actions.push(await writeSetupFailureAtom(atom, envelope, setupResult));
+      const action = await writeSetupFailureAtom(atom, envelope, setupResult);
+      actions.push(action);
+      process.stdout.write(`tools-ci atom ${action.status}: ${atom.name}\n`);
     } else {
-      actions.push(await runAtom(atom, envelope));
+      const action = await runAtom(atom, envelope);
+      actions.push(action);
+      process.stdout.write(`tools-ci atom ${action.status}: ${atom.name}\n`);
     }
   }
 

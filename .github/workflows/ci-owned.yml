@@ -11,21 +11,131 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  owned:
-    name: Owned CI
+  prepare-tools-ci:
+    name: Owned CI / prepare tools-ci
     runs-on: [self-hosted, Linux, ARM64, nexu-spark, open-design-ci]
-    timeout-minutes: 120
-    env:
-      CI_GATE_PLAYWRIGHT_INSTALL_FLAGS: chromium
-      CI_GATE_HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
-      COREPACK_HOME: /home/runner/.cache/open-design-ci/corepack
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v6.0.2
 
-      - name: Run owned CI protocol
-        run: .github/workflows/scripts/ci-gate.sh --provider owned --mode default --results-path ".tmp/workflows/ci-gate/runs/${GITHUB_RUN_ID}/ci-results.json"
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
+
+      - name: Build tools-ci
+        run: pnpm --filter @open-design/tools-ci build
+
+      - name: Pack tools-ci dist
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp/workflows/ci-gate
+          tar -C tools/ci -cf .tmp/workflows/ci-gate/tools-ci-dist.tar dist
+
+      - name: Upload tools-ci dist
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-owned-tools-ci-dist
+          path: .tmp/workflows/ci-gate/tools-ci-dist.tar
+          if-no-files-found: error
+          retention-days: 7
+
+  shard:
+    name: Owned CI / ${{ matrix.shard }}
+    needs: prepare-tools-ci
+    runs-on: [self-hosted, Linux, ARM64, nexu-spark, open-design-ci]
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - shard: nix
+            profile: nix-capable
+            atoms: nix
+          - shard: browser
+            profile: ci-playwright
+            atoms: browser
+          - shard: daemon
+            profile: ci-base
+            atoms: daemon
+          - shard: build-typecheck
+            profile: ci-base
+            atoms: typecheck build
+          - shard: checks-web
+            profile: ci-base
+            atoms: guard i18n unit web
+    env:
+      CI_GATE_HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Download tools-ci dist
+        uses: actions/download-artifact@v8
+        with:
+          name: ci-owned-tools-ci-dist
+          path: .tmp/workflows/ci-gate/tools-ci-dist
+
+      - name: Extract tools-ci dist
+        run: tar -C tools/ci -xf .tmp/workflows/ci-gate/tools-ci-dist/tools-ci-dist.tar
+
+      - name: Run owned CI shard
+        run: .github/workflows/scripts/ci/local-docker-tools-ci.sh --provider owned --profile "${{ matrix.profile }}" "${GITHUB_RUN_ID}-${{ matrix.shard }}" ${{ matrix.atoms }}
+
+      - name: Upload owned CI shard results
+        if: ${{ always() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-owned-shard-${{ matrix.shard }}
+          path: .tmp/workflows/ci-gate/runs/${{ github.run_id }}-${{ matrix.shard }}
+          if-no-files-found: error
+          retention-days: 7
+
+  merge:
+    name: Owned CI / merge
+    needs: [prepare-tools-ci, shard]
+    if: ${{ always() }}
+    runs-on: [self-hosted, Linux, ARM64, nexu-spark, open-design-ci]
+    timeout-minutes: 20
+    env:
+      CI_GATE_HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Download tools-ci dist
+        uses: actions/download-artifact@v8
+        with:
+          name: ci-owned-tools-ci-dist
+          path: .tmp/workflows/ci-gate/tools-ci-dist
+
+      - name: Extract tools-ci dist
+        run: tar -C tools/ci -xf .tmp/workflows/ci-gate/tools-ci-dist/tools-ci-dist.tar
+
+      - name: Download owned CI shard results
+        uses: actions/download-artifact@v8
+        with:
+          pattern: ci-owned-shard-*
+          path: .tmp/workflows/ci-gate/shards
+
+      - name: Merge owned CI shard results
+        run: |
+          set -euo pipefail
+          out_dir=".tmp/workflows/ci-gate/runs/${GITHUB_RUN_ID}"
+          mkdir -p "$out_dir"
+          node tools/ci/dist/index.mjs merge-shards \
+            --manifest tools/ci/atoms.json \
+            --shards-root .tmp/workflows/ci-gate/shards \
+            --provider owned \
+            --mode default \
+            --event-name "$GITHUB_EVENT_NAME" \
+            --head-sha "$CI_GATE_HEAD_SHA" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --out "$out_dir/ci-results.json"
+          echo "ci results: $out_dir/ci-results.json"
+          echo "OD_CI_RESULTS_JSON $(base64 < "$out_dir/ci-results.json" | tr -d '\n')"
 
       - name: Upload owned CI results
         if: ${{ always() }}

@@ -1,6 +1,6 @@
 import { cac } from "cac";
 
-import { aggregateWorkflowResultFiles } from "./aggregate.js";
+import { aggregateWorkflowResultFiles, mergeWorkflowShardResultFiles } from "./aggregate.js";
 import { validateAtomManifest } from "./atoms.js";
 import { selectAtomsFromFiles } from "./capabilities.js";
 import { executeAtomsFromFiles } from "./execute.js";
@@ -28,6 +28,19 @@ type AggregateOptions = {
   json?: boolean;
   out?: string;
   ownedResults?: string;
+};
+
+type MergeShardsOptions = {
+  eventName?: string;
+  headSha?: string;
+  json?: boolean;
+  manifest?: string;
+  mode?: string;
+  out?: string;
+  provider?: string;
+  runAttempt?: string;
+  runId?: string;
+  shardsRoot?: string;
 };
 
 function printJson(value: unknown): void {
@@ -113,6 +126,38 @@ async function aggregate(options: AggregateOptions): Promise<void> {
   }
 }
 
+async function mergeShards(options: MergeShardsOptions): Promise<void> {
+  const required = {
+    eventName: options.eventName,
+    headSha: options.headSha,
+    provider: options.provider,
+    runAttempt: options.runAttempt,
+    runId: options.runId,
+    shardsRoot: options.shardsRoot,
+  };
+  for (const [key, value] of Object.entries(required)) {
+    if (value == null || value.length === 0) {
+      throw new Error(`merge-shards requires --${key.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`)} <value>`);
+    }
+  }
+  const result = await mergeWorkflowShardResultFiles({
+    eventName: required.eventName!,
+    headSha: required.headSha!,
+    manifestPath: options.manifest ?? "tools/ci/atoms.json",
+    mode: options.mode ?? "default",
+    outPath: options.out,
+    provider: required.provider!,
+    runAttempt: required.runAttempt!,
+    runId: required.runId!,
+    shardsRoot: required.shardsRoot!,
+  });
+  if (options.json === true || options.out == null) {
+    printJson(result);
+  } else {
+    process.stdout.write(`tools-ci merge-shards: ${result.actions.length} atoms\n`);
+  }
+}
+
 process.on("uncaughtException", fail);
 process.on("unhandledRejection", fail);
 
@@ -159,12 +204,28 @@ cli
     void aggregate(options);
   });
 
+cli
+  .command("merge-shards", "Merge shard ci-results.json files into one provider result")
+  .option("--manifest <path>", "Atom manifest path", { default: "tools/ci/atoms.json" })
+  .option("--shards-root <path>", "Directory containing downloaded shard artifacts")
+  .option("--provider <provider>", "Provider id for the merged result")
+  .option("--mode <mode>", "Provider mode for the merged result", { default: "default" })
+  .option("--event-name <event>", "GitHub event name for the merged result")
+  .option("--head-sha <sha>", "Head SHA for the merged result")
+  .option("--run-id <id>", "Workflow run id for the merged result")
+  .option("--run-attempt <attempt>", "Workflow run attempt for the merged result")
+  .option("--out <path>", "Write merged ci-results.json to a file")
+  .option("--json", "Print JSON")
+  .action((options: MergeShardsOptions) => {
+    void mergeShards(options);
+  });
+
 cli.help();
 cli.parse();
 
 export { loadAtomManifest, parseAtomManifest, validateAtomManifest } from "./atoms.js";
 export { parseProviderCapabilities, selectAtoms, selectAtomsFromFiles } from "./capabilities.js";
 export { executeAtoms, executeAtomsFromFiles } from "./execute.js";
-export { aggregateWorkflowResultFiles, aggregateWorkflowResults, parseWorkflowResult } from "./aggregate.js";
+export { aggregateWorkflowResultFiles, aggregateWorkflowResults, mergeWorkflowShardResultFiles, mergeWorkflowShardResults, parseWorkflowResult } from "./aggregate.js";
 export { readNormalizedEnvelope, resolveToolCiConfig, resolveToolCiRoots } from "./envelope.js";
 export type { NormalizedEnvelope, ToolCiConfig, ToolCiProfile, ToolCiRoots, ToolCiSourceMode } from "./envelope.js";

@@ -1,5 +1,7 @@
-import { readFile, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { readdir, readFile, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
+
+import { type AtomManifest, loadAtomManifest } from "./atoms.js";
 
 export type WorkflowActionKind = "real" | "placeholder";
 export type WorkflowActionStatus = "success" | "failure" | "not-run";
@@ -9,6 +11,7 @@ export type WorkflowActionResult = {
   kind: WorkflowActionKind;
   status: WorkflowActionStatus;
   steps?: unknown[];
+  [key: string]: unknown;
 };
 
 export type WorkflowResult = {
@@ -63,6 +66,7 @@ function parseWorkflowAction(value: unknown): WorkflowActionResult {
     throw new Error(`unsupported workflow action status: ${status}`);
   }
   return {
+    ...value,
     action,
     kind,
     status,
@@ -159,6 +163,104 @@ export async function aggregateWorkflowResultFiles(options: {
   const owned = parseWorkflowResult(JSON.parse(await readFile(resolve(options.ownedResultsPath), "utf8")));
   const github = parseWorkflowResult(JSON.parse(await readFile(resolve(options.githubResultsPath), "utf8")));
   const result = aggregateWorkflowResults(owned, github);
+  if (options.outPath != null) {
+    await writeFile(resolve(options.outPath), `${JSON.stringify(result, null, 2)}\n`, "utf8");
+  }
+  return result;
+}
+
+async function findCiResultFiles(root: string): Promise<string[]> {
+  const entries = await readdir(root, { withFileTypes: true });
+  const paths: string[] = [];
+  for (const entry of entries) {
+    const path = join(root, entry.name);
+    if (entry.isFile() && entry.name === "ci-results.json") {
+      paths.push(path);
+    } else if (entry.isDirectory()) {
+      paths.push(...await findCiResultFiles(path));
+    }
+  }
+  return paths.sort();
+}
+
+export function mergeWorkflowShardResults(options: {
+  eventName: string;
+  headSha: string;
+  manifest: AtomManifest;
+  mode: string;
+  provider: string;
+  runAttempt: string;
+  runId: string;
+  shards: WorkflowResult[];
+}): WorkflowResult {
+  const actionsByName = new Map<string, WorkflowActionResult>();
+  for (const shard of options.shards) {
+    if (shard.provider !== options.provider) {
+      throw new Error(`shard provider ${shard.provider} does not match ${options.provider}`);
+    }
+    if (shard.mode !== options.mode) {
+      throw new Error(`shard mode ${shard.mode} does not match ${options.mode}`);
+    }
+    if (shard.headSha !== options.headSha) {
+      throw new Error(`shard headSha ${shard.headSha} does not match ${options.headSha}`);
+    }
+    for (const action of shard.actions) {
+      if (actionsByName.has(action.action)) {
+        throw new Error(`duplicate shard action: ${action.action}`);
+      }
+      actionsByName.set(action.action, action);
+    }
+  }
+
+  const actions = options.manifest.atoms.map((atom) => {
+    const action = actionsByName.get(atom.name);
+    if (action == null) {
+      throw new Error(`missing shard action: ${atom.name}`);
+    }
+    return action;
+  });
+
+  return {
+    actions,
+    eventName: options.eventName,
+    headSha: options.headSha,
+    mode: options.mode,
+    provider: options.provider,
+    runAttempt: options.runAttempt,
+    runId: options.runId,
+    schemaVersion: 1,
+  };
+}
+
+export async function mergeWorkflowShardResultFiles(options: {
+  eventName: string;
+  headSha: string;
+  manifestPath: string;
+  mode: string;
+  outPath?: string;
+  provider: string;
+  runAttempt: string;
+  runId: string;
+  shardsRoot: string;
+}): Promise<WorkflowResult> {
+  const manifest = await loadAtomManifest(resolve(options.manifestPath));
+  const resultPaths = await findCiResultFiles(resolve(options.shardsRoot));
+  if (resultPaths.length === 0) {
+    throw new Error(`no ci-results.json files found under ${options.shardsRoot}`);
+  }
+  const shards = await Promise.all(
+    resultPaths.map(async (path) => parseWorkflowResult(JSON.parse(await readFile(path, "utf8")))),
+  );
+  const result = mergeWorkflowShardResults({
+    eventName: options.eventName,
+    headSha: options.headSha,
+    manifest,
+    mode: options.mode,
+    provider: options.provider,
+    runAttempt: options.runAttempt,
+    runId: options.runId,
+    shards,
+  });
   if (options.outPath != null) {
     await writeFile(resolve(options.outPath), `${JSON.stringify(result, null, 2)}\n`, "utf8");
   }

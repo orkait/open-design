@@ -67,6 +67,17 @@ mkdir -p "$results_dir"
 mkdir -p "$COREPACK_HOME"
 mkdir -p "$npm_config_store_dir"
 
+if ! node --experimental-strip-types "$ci_root/packages/metatool/src/cli.ts" check "$ci_root/tools/ci" >/dev/null 2>&1; then
+  package_manager="$(node -p "JSON.parse(require('node:fs').readFileSync('$ci_root/package.json', 'utf8')).packageManager")"
+  echo "tools-ci dist is missing or stale; installing workspace and rebuilding tools-ci"
+  (
+    cd "$ci_root"
+    corepack prepare "$package_manager" --activate
+    corepack pnpm install --frozen-lockfile --prefer-offline --network-concurrency=8
+    corepack pnpm --filter @open-design/tools-ci build
+  )
+fi
+
 PROVIDER="$provider" \
 MODE="$mode" \
 MANIFEST_PATH="$ci_root/tools/ci/atoms.json" \
