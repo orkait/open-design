@@ -34,7 +34,7 @@ const WIN_NSIS_OVERLAY_RELATIVE_PATHS = [
 ] as const;
 
 export const WIN_PAYLOAD_SEVEN_Z_CREATE_ARGS = ["-t7z", "-m0=LZMA2", "-mx=1", "-mf=off"] as const;
-const WIN_NSIS_PAYLOAD_SEVEN_Z_TIMEOUT_MS = 180_000;
+const WIN_NSIS_PAYLOAD_SEVEN_Z_TIMEOUT_MS = 300_000;
 
 function escapeNsisString(value: string): string {
   return value.replace(/\$/g, "$$").replace(/"/g, '$\\"').replace(/\r?\n/g, "$\\r$\\n");
@@ -151,8 +151,8 @@ function Parse-ComparableLauncherVersion {
   $nightly = [regex]::Match($cleaned, '^(\\d+)\\.(\\d+)\\.(\\d+)\\.nightly\\.(\\d+)$', 'IgnoreCase')
   if ($nightly.Success) {
     return [pscustomobject]@{
-      Nums = @([int]$nightly.Groups[1].Value, [int]$nightly.Groups[2].Value, [int]$nightly.Groups[3].Value)
-      Pre = @('nightly', $nightly.Groups[4].Value)
+      "Nums" = @([int]$nightly.Groups[1].Value, [int]$nightly.Groups[2].Value, [int]$nightly.Groups[3].Value)
+      "Pre" = @('nightly', $nightly.Groups[4].Value)
     }
   }
 
@@ -165,7 +165,7 @@ function Parse-ComparableLauncherVersion {
     $part = if ($index -lt $parts.Count) { $parts[$index] } else { '' }
     if ($part -match '^\\d+$') { $nums += [int]$part } else { $nums += 0 }
   }
-  return [pscustomobject]@{ Nums = @($nums); Pre = @($pre) }
+  return [pscustomobject]@{ "Nums" = @($nums); "Pre" = @($pre) }
 }
 
 function Compare-LauncherIdentifier {
@@ -202,18 +202,18 @@ function Compare-LauncherVersions {
 function New-CleanupEntry {
   param(
     [Parameter(Mandatory = $true)][string]$EntryVersion,
-    [Parameter(Mandatory = $true)][int]$Generation,
-    [Parameter(Mandatory = $true)][string]$Reason,
-    [Parameter(Mandatory = $true)][string]$State,
+    [Parameter(Mandatory = $true)][int]$EntryGeneration,
+    [Parameter(Mandatory = $true)][string]$EntryReason,
+    [Parameter(Mandatory = $true)][string]$EntryState,
     [Parameter(Mandatory = $true)][string]$UpdatedAt
   )
-  return [ordered]@{
-    generation = $Generation
-    reason = $Reason
-    state = $State
-    updatedAt = $UpdatedAt
-    version = $EntryVersion
-  }
+  $entry = New-Object PSObject
+  $entry | Add-Member -NotePropertyName "generation" -NotePropertyValue $EntryGeneration
+  $entry | Add-Member -NotePropertyName "reason" -NotePropertyValue $EntryReason
+  $entry | Add-Member -NotePropertyName "state" -NotePropertyValue $EntryState
+  $entry | Add-Member -NotePropertyName "updatedAt" -NotePropertyValue $UpdatedAt
+  $entry | Add-Member -NotePropertyName "version" -NotePropertyValue $EntryVersion
+  return $entry
 }
 
 function Get-PointerGeneration {
@@ -239,14 +239,14 @@ if (Test-Path -LiteralPath $RuntimePath) {
 
 $updatedAt = (Get-Date).ToUniversalTime().ToString("o")
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-$pointer = [ordered]@{ generation = 0; version = $Version }
+$pointer = [ordered]@{ "generation" = 0; "version" = $Version }
 $runtime = [ordered]@{
-  active = $pointer
-  channel = $Channel
-  lastSuccessful = $pointer
-  namespace = $Namespace
-  schemaVersion = 1
-  updatedAt = $updatedAt
+  "active" = $pointer
+  "channel" = $Channel
+  "lastSuccessful" = $pointer
+  "namespace" = $Namespace
+  "schemaVersion" = 1
+  "updatedAt" = $updatedAt
 }
 
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $RuntimePath) | Out-Null
@@ -271,15 +271,16 @@ if ($null -ne $previousRuntime) {
   }
 
   if ($deprecatedByVersion.Count -gt 0) {
-    $versions = @($deprecatedByVersion.Values) | Sort-Object -Property version
+    $versions = @()
+    $versions += @($deprecatedByVersion.Values | Sort-Object -Property version)
     $versions += New-CleanupEntry $Version 0 'current-bound-package' 'retained' $updatedAt
     $cleanup = [ordered]@{
-      channel = $Channel
-      currentVersion = $Version
-      namespace = $Namespace
-      updatedAt = $updatedAt
-      version = 1
-      versions = $versions
+      "channel" = $Channel
+      "currentVersion" = $Version
+      "namespace" = $Namespace
+      "updatedAt" = $updatedAt
+      "version" = 1
+      "versions" = $versions
     }
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $CleanupPath) | Out-Null
     [System.IO.File]::WriteAllText($CleanupPath, (($cleanup | ConvertTo-Json -Depth 8) + [Environment]::NewLine), $utf8NoBom)
