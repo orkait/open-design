@@ -344,8 +344,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6.0.2
 
-      - name: Setup workspace
-        uses: ./.github/actions/setup-workspace
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6.0.8
+        with:
+          version: 10.33.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6.4.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Resolve pnpm store path
+        id: pnpm-store
+        shell: pwsh
+        run: |
+          $storePath = pnpm store path --silent
+          "path=$storePath" >> $env:GITHUB_OUTPUT
+
+      - name: Cache pnpm store
+        uses: actions/cache@v5.0.5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install dependencies without workspace postinstall
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build launcher payload test dependencies
+        run: |
+          pnpm --filter @open-design/sidecar-proto build
+          pnpm --filter @open-design/launcher-proto --filter @open-design/sidecar --filter @open-design/platform --workspace-concurrency=3 run build
 
       - name: Windows launcher payload archive tests
         run: pnpm --filter @open-design/tools-pack exec vitest run tests/launcher-payload.test.ts
