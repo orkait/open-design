@@ -5075,7 +5075,6 @@ export function ProjectView({
         seedFromConversationId
           ? {
               seedFromConversationId,
-              seedMessages: [...messages],
             }
           : undefined,
       );

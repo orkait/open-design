@@ -710,10 +710,6 @@ describe('ProjectView conversation run isolation', () => {
       undefined,
       {
         seedFromConversationId: 'conv-a',
-        seedMessages: [
-          { id: 'user-a', role: 'user', content: 'Keep the editorial grid and muted palette.', createdAt: 1 },
-          seededAssistant,
-        ],
       },
     );
   });
@@ -765,7 +761,6 @@ describe('ProjectView conversation run isolation', () => {
       undefined,
       {
         seedFromConversationId: 'conv-a',
-        seedMessages: [userMessage, updatedAssistant],
       },
     );
   });
