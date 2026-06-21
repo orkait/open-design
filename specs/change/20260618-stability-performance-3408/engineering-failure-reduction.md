@@ -50,7 +50,7 @@ Status: proposed · Parent: #3408 · Upstream background: spec.md · Spec format
 
 ## Risks & mitigations
 
-- **fix_config wildcard false positive**: If an invalid value actually carries semantics, normalizing to fast may change user intent → mitigation: `default` semantically means "let the system choose", so normalizing to fast or removing the line (using the CLI default) is safe; red specs cover "valid values unchanged / comments not touched".
+- **fix_config wildcard false positive**: If an invalid value actually carries semantics, dropping it could change user intent → mitigation: the decided strategy is **remove-only** (delete any `service_tier` line whose value is not in {fast,flex} so the CLI falls back to its built-in default); we do **not** map to `fast`, because `default` already means "let the system choose" and remove-only never downgrades a future value the installed CLI would accept. Red specs cover "valid values unchanged / comments not touched".
 - **execution_failed digging depends on Langfuse**: Trace retention is limited and opencode swallows some true causes → benefit has a ceiling; document that honestly and split as much as possible.
 - **spawn bug may be environmental**: Some ebadf/eperm cases may be user-machine environment → attribute first, then decide whether we control it.
 - No contract/migration risk (classification is additive; normalization only edits a local config file).
