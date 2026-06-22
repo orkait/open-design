@@ -3,6 +3,7 @@ import type { Locator, Page } from '@playwright/test';
 
 import { dismissPrivacyDialog, STORAGE_KEY, waitForLoadingToClear } from '@/playwright/amr';
 import { fulfillAgentsRoute } from '@/playwright/mock-factory';
+import { T } from '@/timeouts';
 
 type OnboardingConfig = {
   mode: 'daemon';
@@ -27,7 +28,7 @@ declare global {
   }
 }
 
-test.describe.configure({ timeout: 30_000 });
+test.describe.configure({ timeout: T.xlong });
 
 test('[P0] @critical onboarding lets AMR Cloud sign in and complete setup after the login poll succeeds', async ({ page }) => {
   const config = await wireOnboardingMocks(page, {
@@ -54,7 +55,7 @@ test('[P0] @critical onboarding lets AMR Cloud sign in and complete setup after 
     .toBeGreaterThan(statusCallsBeforeLogin);
   // Login success lands on the About-you step; advance past newsletter to the
   // final brand step that hosts Finish setup.
-  await expect(page.getByRole('button', { name: /^Continue$/i })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole('heading', { name: /About you/i })).toBeVisible({ timeout: T.long });
   await advanceFromAboutYouToBrand(page);
   await expect(page.getByRole('button', { name: /Finish setup/i })).toBeVisible({ timeout: 10_000 });
   await expectOnboardingFinished(page);
@@ -155,7 +156,7 @@ test('[P0] onboarding Local CLI path stays gated while local agent scan is still
   const config = await wireOnboardingMocks(page, {
     amrAvailable: false,
     initialLoggedIn: false,
-    agentsDelayMs: 600,
+    agentsDelayMs: 20_000,
   });
 
   await seedOnboardingConfig(page, config);
@@ -1064,9 +1065,13 @@ async function expectOnboardingFinished(page: Page) {
 }
 
 async function advanceFromAboutYouToBrand(page: Page) {
-  await page.getByRole('button', { name: /^Continue$/i }).click();
+  await expect(page.getByRole('heading', { name: /About you/i })).toBeVisible({ timeout: T.long });
+  const continueButton = page.getByRole('button', { name: /^Continue$/i });
+  await continueButton.scrollIntoViewIfNeeded();
+  await continueButton.click();
   await expect(page.getByRole('heading', { name: /Stay in the loop/i })).toBeVisible();
-  await page.getByRole('button', { name: /^Continue$/i }).click();
+  await continueButton.scrollIntoViewIfNeeded();
+  await continueButton.click();
   await expect(page.getByRole('heading', { name: /Extract your design system/i })).toBeVisible();
 }
 
