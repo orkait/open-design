@@ -114,9 +114,10 @@ export function BrandsTab({ onApplyDesignSystem, onOpenProject }: BrandsTabProps
   }, [brands, query]);
 
   // Resolve which brand the preview shows. A routed brand id (deep-link / rail
-  // selection) wins when it exists; otherwise keep the current pick valid as
-  // the list refreshes (e.g. a brand finishes extracting or is removed), and
-  // fall back to the first entry only when the current pick is gone.
+  // selection) wins only when it is present in the reconciled list. If the
+  // route points at a brand that was just deleted or refreshed away, leave the
+  // detail pane empty instead of silently aiming panel actions at another
+  // brand while the URL still names the stale id.
   useEffect(() => {
     const list = brands ?? [];
     if (list.length === 0) {
@@ -124,7 +125,9 @@ export function BrandsTab({ onApplyDesignSystem, onOpenProject }: BrandsTabProps
       return;
     }
     setSelectedBrandId((cur) => {
-      if (routedBrandId && list.some((b) => b.meta.id === routedBrandId)) return routedBrandId;
+      if (routedBrandId) {
+        return list.some((b) => b.meta.id === routedBrandId) ? routedBrandId : null;
+      }
       if (cur && list.some((b) => b.meta.id === cur)) return cur;
       return list[0]?.meta.id ?? null;
     });
@@ -142,6 +145,9 @@ export function BrandsTab({ onApplyDesignSystem, onOpenProject }: BrandsTabProps
     if (!selectedBrandId) return null;
     return (brands ?? []).find((b) => b.meta.id === selectedBrandId) ?? null;
   }, [brands, selectedBrandId]);
+  const selectedIsRouteSynced = Boolean(
+    selected && selected.meta.id === selectedBrandId && (!routedBrandId || routedBrandId === selected.meta.id),
+  );
 
   const handleCreated = useCallback(
     (_brandId: string, projectId: string, conversationId: string) => {
@@ -233,8 +239,10 @@ export function BrandsTab({ onApplyDesignSystem, onOpenProject }: BrandsTabProps
             summary={selected}
             variant="panel"
             onChanged={refresh}
+            onBeforeMutation={() => setSelectedBrandId(null)}
             onApplyDesignSystem={onApplyDesignSystem}
             onOpenProject={onOpenProject}
+            actionsDisabled={!selectedIsRouteSynced}
           />
         ) : isEmpty ? (
           <div className={styles.pickerPane} data-testid="brands-picker-pane">

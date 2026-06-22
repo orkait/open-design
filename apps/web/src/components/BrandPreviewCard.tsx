@@ -203,18 +203,24 @@ export interface BrandPreviewCardProps {
   variant?: 'panel' | 'compact';
   /** Panel-only: called after a mutation (delete) so a parent can refresh. */
   onChanged?: () => void | Promise<void>;
+  /** Panel-only: lets a parent clear iframe-heavy detail UI before mutation. */
+  onBeforeMutation?: () => void;
   /** Panel-only: apply this brand's design system as the global default. */
   onApplyDesignSystem?: (designSystemId: string) => void;
   /** Panel-only: open the backing extraction project through the app shell. */
   onOpenProject?: (projectId: string) => Promise<boolean> | boolean | void;
+  /** Panel-only: disables actions when parent route/selection/summary are stale. */
+  actionsDisabled?: boolean;
 }
 
 export function BrandPreviewCard({
   summary,
   variant = 'panel',
   onChanged,
+  onBeforeMutation,
   onApplyDesignSystem,
   onOpenProject,
+  actionsDisabled = false,
 }: BrandPreviewCardProps) {
   const t = useT();
   const compact = variant === 'compact';
@@ -321,6 +327,7 @@ export function BrandPreviewCard({
   }, [showSystem, projectId]);
 
   const useInChat = useCallback(async () => {
+    if (actionsDisabled) return;
     const designSystemId = meta.designSystemId;
     if (!designSystemId || busy) return;
     setBusy(true);
@@ -351,13 +358,14 @@ export function BrandPreviewCard({
     } finally {
       setBusy(false);
     }
-  }, [meta.designSystemId, busy, onApplyDesignSystem, t, name]);
+  }, [actionsDisabled, meta.designSystemId, busy, onApplyDesignSystem, t, name]);
 
   useEffect(() => {
     setBackingProjectMissing(false);
   }, [projectId]);
 
   const openProject = useCallback(async () => {
+    if (actionsDisabled) return;
     if (!projectId) return;
     if (onOpenProject) {
       const opened = await onOpenProject(projectId);
@@ -365,22 +373,25 @@ export function BrandPreviewCard({
       return;
     }
     navigate({ kind: 'project', projectId, fileName: null, conversationId: null });
-  }, [onOpenProject, projectId]);
+  }, [actionsDisabled, onOpenProject, projectId]);
 
   const deleteBrand = useCallback(async () => {
+    if (actionsDisabled) return;
     if (busy) return;
     const ok = window.confirm(t('brandDetail.deleteConfirm').replace('{name}', name));
     if (!ok) return;
     setBusy(true);
     try {
-      await fetch(`/api/brands/${encodeURIComponent(meta.id)}`, { method: 'DELETE' });
+      const resp = await fetch(`/api/brands/${encodeURIComponent(meta.id)}`, { method: 'DELETE' });
+      if (!resp.ok) throw new Error('Brand delete failed');
       // Drop the now-stale `/brands/:id` selection before refreshing the list.
+      onBeforeMutation?.();
       navigate({ kind: 'home', view: 'brands' }, { replace: true });
       await onChanged?.();
     } catch {
       setBusy(false);
     }
-  }, [busy, meta.id, name, onChanged, t]);
+  }, [actionsDisabled, busy, meta.id, name, onBeforeMutation, onChanged, t]);
 
   const dsKitFile = dsTheme === 'dark' ? 'system/kit.dark.html' : 'system/kit.html';
 
@@ -449,7 +460,7 @@ export function BrandPreviewCard({
             <Button
               variant="primary"
               onClick={() => void useInChat()}
-              disabled={busy || !meta.designSystemId}
+              disabled={actionsDisabled || busy || !meta.designSystemId}
               data-testid="brand-preview-use"
             >
               {t('brandDetail.useInChat')}
@@ -458,7 +469,7 @@ export function BrandPreviewCard({
               <Button
                 variant="ghost"
                 onClick={() => void openProject()}
-                disabled={busy || backingProjectMissing}
+                disabled={actionsDisabled || busy || backingProjectMissing}
                 data-testid="brand-preview-open-project"
               >
                 {t('brandDetail.openProject')}
@@ -467,7 +478,7 @@ export function BrandPreviewCard({
             <Button
               variant="ghost"
               onClick={() => void deleteBrand()}
-              disabled={busy}
+              disabled={actionsDisabled || busy}
               data-testid="brand-preview-delete"
             >
               {t('brandDetail.delete')}
@@ -756,7 +767,7 @@ export function BrandPreviewCard({
               <span className={styles.dsCap}>system/kit.html</span>
             </div>
             <iframe
-              key={dsKitFile}
+              key={`${meta.id}:${projectId}:${dsKitFile}`}
               className={styles.dsFrame}
               src={projectRawUrl(projectId, dsKitFile)}
               loading="lazy"
@@ -801,6 +812,7 @@ export function BrandPreviewCard({
               >
                 <div className={styles.assetFrame}>
                   <iframe
+                    key={`${meta.id}:${projectId}:${a.file}`}
                     src={projectRawUrl(projectId, a.file)}
                     loading="lazy"
                     tabIndex={-1}

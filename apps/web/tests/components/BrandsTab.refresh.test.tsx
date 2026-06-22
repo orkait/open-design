@@ -12,6 +12,7 @@ const routerState = vi.hoisted(() => ({
   route: { kind: 'home', view: 'brands', brandId: undefined } as Record<string, unknown>,
 }));
 const fetchBrandsMock = vi.hoisted(() => vi.fn(async (): Promise<BrandSummary[]> => []));
+const previewCardMock = vi.hoisted(() => vi.fn(() => null));
 const brandIntentState = vi.hoisted(() => ({
   pending: false,
 }));
@@ -36,7 +37,7 @@ vi.mock('../../src/runtime/brand-intent', () => ({
 }));
 // Heavy children are out of scope for the refresh contract.
 vi.mock('../../src/components/BrandPreviewCard', () => ({
-  BrandPreviewCard: () => null,
+  BrandPreviewCard: previewCardMock,
   BrandLogo: () => null,
   hostnameOf: (url?: string) => url ?? '',
 }));
@@ -77,6 +78,7 @@ describe('BrandsTab refresh reconciliation', () => {
     brandIntentState.pending = false;
     fetchBrandsMock.mockReset();
     fetchBrandsMock.mockResolvedValue([]);
+    previewCardMock.mockClear();
   });
   afterEach(() => {
     cleanup();
@@ -171,5 +173,15 @@ describe('BrandsTab refresh reconciliation', () => {
     const afterSettle = fetchBrandsMock.mock.calls.length;
     await vi.advanceTimersByTimeAsync(8000);
     expect(fetchBrandsMock).toHaveBeenCalledTimes(afterSettle);
+  });
+
+  it('does not aim the preview at another brand when the routed brand disappears', async () => {
+    routerState.route = { kind: 'home', view: 'brands', brandId: 'deleted-brand' };
+    fetchBrandsMock.mockResolvedValue([brandSummary('remaining-brand', 'ready')]);
+
+    renderBrandsTab();
+
+    await waitFor(() => expect(fetchBrandsMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(previewCardMock).not.toHaveBeenCalled());
   });
 });

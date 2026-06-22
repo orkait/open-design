@@ -125,4 +125,125 @@ describe('BrandPreviewCard', () => {
       ),
     ).toBeTruthy();
   });
+
+  it('does not mount design-system iframes for an in-progress brand', () => {
+    const extracting: BrandSummary = {
+      ...rampBrand,
+      meta: { ...rampBrand.meta, status: 'extracting' },
+    };
+
+    const { container } = render(
+      <I18nProvider initial="en">
+        <BrandPreviewCard summary={extracting} variant="panel" onApplyDesignSystem={vi.fn()} />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByText('Extracting…')).toBeTruthy();
+    expect(container.querySelectorAll('iframe')).toHaveLength(0);
+  });
+
+  it('clears the parent detail after deleting a brand', async () => {
+    const events: string[] = [];
+    vi.stubGlobal('confirm', vi.fn(() => true));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).startsWith('/api/brands/') && init?.method === 'DELETE') {
+          events.push('fetch-delete');
+        }
+        return { ok: true, json: async () => ({}) };
+      }),
+    );
+
+    render(
+      <I18nProvider initial="en">
+        <BrandPreviewCard
+          summary={rampBrand}
+          variant="panel"
+          onBeforeMutation={() => {
+            events.push('clear-preview');
+          }}
+          onChanged={() => {
+            events.push('refresh');
+          }}
+        />
+      </I18nProvider>,
+    );
+
+    fireEvent.click(screen.getByTestId('brand-preview-delete'));
+
+    await waitFor(() => {
+      expect(events).toContain('refresh');
+    });
+    expect(events).toEqual(['fetch-delete', 'clear-preview', 'refresh']);
+  });
+
+  it('keeps the parent detail selected when deleting a brand fails', async () => {
+    const onBeforeMutation = vi.fn();
+    vi.stubGlobal('confirm', vi.fn(() => true));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).startsWith('/api/brands/') && init?.method === 'DELETE') {
+          throw new Error('delete failed');
+        }
+        return { ok: true, json: async () => ({}) };
+      }),
+    );
+
+    render(
+      <I18nProvider initial="en">
+        <BrandPreviewCard
+          summary={rampBrand}
+          variant="panel"
+          onBeforeMutation={onBeforeMutation}
+          onChanged={vi.fn()}
+        />
+      </I18nProvider>,
+    );
+
+    fireEvent.click(screen.getByTestId('brand-preview-delete'));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('/api/brands/brand-ramp', { method: 'DELETE' });
+      expect((screen.getByTestId('brand-preview-delete') as HTMLButtonElement).disabled).toBe(false);
+    });
+    expect(onBeforeMutation).not.toHaveBeenCalled();
+  });
+
+  it('keeps the parent detail selected when deleting a brand returns an HTTP failure', async () => {
+    const onBeforeMutation = vi.fn();
+    const onChanged = vi.fn();
+    vi.stubGlobal('confirm', vi.fn(() => true));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).startsWith('/api/brands/') && init?.method === 'DELETE') {
+          return { ok: false, json: async () => ({}) };
+        }
+        return { ok: true, json: async () => ({}) };
+      }),
+    );
+
+    render(
+      <I18nProvider initial="en">
+        <BrandPreviewCard
+          summary={rampBrand}
+          variant="panel"
+          onBeforeMutation={onBeforeMutation}
+          onChanged={onChanged}
+        />
+      </I18nProvider>,
+    );
+
+    fireEvent.click(screen.getByTestId('brand-preview-delete'));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('/api/brands/brand-ramp', { method: 'DELETE' });
+      expect((screen.getByTestId('brand-preview-delete') as HTMLButtonElement).disabled).toBe(false);
+    });
+    expect(onBeforeMutation).not.toHaveBeenCalled();
+    expect(onChanged).not.toHaveBeenCalled();
+    expect(window.location.pathname).toBe('/brands/brand-ramp');
+  });
 });
