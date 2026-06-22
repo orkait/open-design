@@ -2182,7 +2182,9 @@ export function SettingsDialog({
       case 'invalid_base_url':
         return t('settings.testInvalidBaseUrl');
       case 'rate_limited':
-        return t('settings.testRateLimited');
+        return result.detail?.trim()
+          ? `${t('settings.testRateLimited')} ${result.detail.trim()}`
+          : t('settings.testRateLimited');
       case 'upstream_unavailable':
         return t('settings.testUpstream', { status: result.status ?? 0 });
       case 'timeout':
