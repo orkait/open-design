@@ -210,7 +210,7 @@ function isSessionResumeExpiredText(text: string): boolean {
   // Tightly anchored to Claude's actual resume-miss shapes. The session-id form
   // requires the id token immediately before "not found" so it cannot bridge an
   // unrelated "session …" and a far-away "404 Not Found" (e.g. opencode 4xx).
-  return /\bcould not be resumed\b/i.test(text) ||
+  return /\bsession could not be resumed\b/i.test(text) ||
     /\bno conversation found with session id\b/i.test(text) ||
     /\bno session found\b/i.test(text) ||
     /\bsession [\w-]+ not found\b/i.test(text);
