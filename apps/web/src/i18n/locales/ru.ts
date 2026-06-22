@@ -301,6 +301,7 @@ export const ru: Dict = {
   'settings.modelsLoadedCount': '✓ Загружено моделей: {count}.',
   'settings.modelSourceAccount': 'Из вашего аккаунта',
   'settings.modelSourceSuggested': 'Рекомендуемое',
+  'settings.modelSourceFree': 'Бесплатно',
   'settings.fetchModels': 'Загрузить модели',
   'settings.fetchModelsTitle': 'Загрузить доступные модели от этого провайдера',
   'settings.fetchModelsRunning': 'Загрузка моделей…',

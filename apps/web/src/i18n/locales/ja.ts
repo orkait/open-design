@@ -301,6 +301,7 @@ export const ja: Dict = {
   'settings.modelsLoadedCount': '✓ {count} 個のモデルを読み込みました。',
   'settings.modelSourceAccount': 'アカウントから',
   'settings.modelSourceSuggested': 'おすすめ',
+  'settings.modelSourceFree': '無料',
   'settings.fetchModels': 'モデルを取得',
   'settings.fetchModelsTitle': 'このプロバイダーから利用可能なモデルを取得',
   'settings.fetchModelsRunning': 'モデルを取得中…',

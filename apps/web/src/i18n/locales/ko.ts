@@ -301,6 +301,7 @@ export const ko: Dict = {
   'settings.modelsLoadedCount': '✓ 모델 {count}개를 불러왔습니다.',
   'settings.modelSourceAccount': '계정에서 가져옴',
   'settings.modelSourceSuggested': '추천',
+  'settings.modelSourceFree': '무료',
   'settings.fetchModels': '모델 가져오기',
   'settings.fetchModelsTitle': '이 공급자에서 사용 가능한 모델을 가져옵니다',
   'settings.fetchModelsRunning': '모델을 불러오는 중…',

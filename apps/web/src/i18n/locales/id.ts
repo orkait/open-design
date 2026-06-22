@@ -301,6 +301,7 @@ export const id: Dict = {
   'settings.modelsLoadedCount': '✓ Memuat {count} model.',
   'settings.modelSourceAccount': 'Dari akun Anda',
   'settings.modelSourceSuggested': 'Disarankan',
+  'settings.modelSourceFree': 'Gratis',
   'settings.fetchModels': 'Ambil model',
   'settings.fetchModelsTitle': 'Ambil model yang tersedia dari penyedia ini',
   'settings.fetchModelsRunning': 'Mengambil model…',

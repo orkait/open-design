@@ -301,6 +301,7 @@ export const uk: Dict = {
   'settings.modelsLoadedCount': '✓ Завантажено {count} моделей.',
   'settings.modelSourceAccount': 'З вашого облікового запису',
   'settings.modelSourceSuggested': 'Рекомендовано',
+  'settings.modelSourceFree': 'Безкоштовно',
   'settings.fetchModels': 'Отримати моделі',
   'settings.fetchModelsTitle': 'Отримати доступні моделі від цього постачальника',
   'settings.fetchModelsRunning': 'Отримання моделей…',

@@ -301,6 +301,7 @@ export const ar: Dict = {
   'settings.modelsLoadedCount': '✓ تم تحميل {count} نموذج.',
   'settings.modelSourceAccount': 'من حسابك',
   'settings.modelSourceSuggested': 'مُقترح',
+  'settings.modelSourceFree': 'مجاني',
   'settings.fetchModels': 'جلب النماذج',
   'settings.fetchModelsTitle': 'جلب النماذج المتاحة من هذا المزوّد',
   'settings.fetchModelsRunning': 'جارٍ جلب النماذج…',

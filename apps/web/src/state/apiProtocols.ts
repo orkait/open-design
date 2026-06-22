@@ -143,6 +143,23 @@ export const SUGGESTED_MODELS_BY_PROTOCOL: Record<ApiProtocol, readonly string[]
     'qwen3.5:397b',
     'rnj-1:8b',
   ],
+  nvidia: [
+    // NVIDIA serves Nemotron through an OpenAI-compatible endpoint
+    // (integrate.api.nvidia.com/v1). These ids are chat-completion verified
+    // against the live API; several entries that appear in /v1/models are
+    // embedding/reward/safety/parse models or 404 on chat, so they are
+    // intentionally omitted. Users can still type any id or fetch the full
+    // live list once a key is entered.
+    'nvidia/llama-3.3-nemotron-super-49b-v1.5',
+    'nvidia/nemotron-3-super-120b-a12b',
+    'nvidia/nemotron-3-ultra-550b-a55b',
+    'nvidia/nemotron-3-nano-30b-a3b',
+    'nvidia/nvidia-nemotron-nano-9b-v2',
+    'nvidia/llama-3.3-nemotron-super-49b-v1',
+    'nvidia/llama-3.1-nemotron-nano-8b-v1',
+    'nvidia/nemotron-mini-4b-instruct',
+    'mistralai/mistral-nemotron',
+  ],
 };
 
 // "Fast / cheap" model recommendation for each protocol. Used by the
@@ -162,6 +179,9 @@ export const FAST_MODEL_BY_PROTOCOL: Record<ApiProtocol, string> = {
   ollama: 'gemma3:4b',
   senseaudio: 'senseaudio-s2-flash',
   aihubmix: 'gpt-4o-mini',
+  // Smallest verified Nemotron instruct model — a deterministic cheap default
+  // for the memory extractor's auto-pick.
+  nvidia: 'nvidia/nemotron-mini-4b-instruct',
 };
 
 export const API_PROTOCOL_TABS: ReadonlyArray<{
@@ -175,6 +195,7 @@ export const API_PROTOCOL_TABS: ReadonlyArray<{
   { id: 'ollama', title: 'Ollama Cloud' },
   { id: 'senseaudio', title: 'SenseAudio' },
   { id: 'aihubmix', title: 'AIHubMix' },
+  { id: 'nvidia', title: 'NVIDIA' },
 ];
 
 export const API_PROTOCOL_LABELS: Record<ApiProtocol, string> = {
@@ -185,6 +206,7 @@ export const API_PROTOCOL_LABELS: Record<ApiProtocol, string> = {
   ollama: 'Ollama Cloud API',
   senseaudio: 'SenseAudio API',
   aihubmix: 'AIHubMix API',
+  nvidia: 'NVIDIA API',
 };
 
 export const API_KEY_PLACEHOLDERS: Record<ApiProtocol, string> = {
@@ -195,6 +217,7 @@ export const API_KEY_PLACEHOLDERS: Record<ApiProtocol, string> = {
   ollama: 'Ollama API key',
   senseaudio: 'SenseAudio API key',
   aihubmix: 'sk-...',
+  nvidia: 'nvapi-...',
 };
 
 // Default base URL the daemon assumes when the user leaves the field
@@ -208,6 +231,7 @@ export const DEFAULT_BASE_URL_BY_PROTOCOL: Record<ApiProtocol, string> = {
   ollama: 'https://ollama.com',
   senseaudio: 'https://api.senseaudio.cn',
   aihubmix: 'https://aihubmix.com/v1',
+  nvidia: 'https://integrate.api.nvidia.com/v1',
 };
 
 // Fixed-origin gateways: managed single-endpoint providers where the user only
@@ -217,6 +241,9 @@ export const DEFAULT_BASE_URL_BY_PROTOCOL: Record<ApiProtocol, string> = {
 // here when it's such a gateway.
 export const FIXED_ORIGIN_GATEWAYS: ReadonlySet<ApiProtocol> = new Set<ApiProtocol>([
   'aihubmix',
+  // NVIDIA's integrate endpoint is a single managed origin; the user only
+  // supplies an nvapi- key, so the Base URL field is hidden.
+  'nvidia',
 ]);
 
 export function isFixedOriginGateway(protocol: ApiProtocol): boolean {

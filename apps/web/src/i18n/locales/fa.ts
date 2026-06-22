@@ -301,6 +301,7 @@ export const fa: Dict = {
   'settings.modelsLoadedCount': '✓ {count} مدل بارگذاری شد.',
   'settings.modelSourceAccount': 'از حساب شما',
   'settings.modelSourceSuggested': 'پیشنهادی',
+  'settings.modelSourceFree': 'رایگان',
   'settings.fetchModels': 'دریافت مدل‌ها',
   'settings.fetchModelsTitle': 'دریافت مدل‌های موجود از این ارائه‌دهنده',
   'settings.fetchModelsRunning': 'در حال دریافت مدل‌ها…',

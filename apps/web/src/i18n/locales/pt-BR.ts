@@ -301,6 +301,7 @@ export const ptBR: Dict = {
   'settings.modelsLoadedCount': '✓ {count} modelos carregados.',
   'settings.modelSourceAccount': 'Da sua conta',
   'settings.modelSourceSuggested': 'Sugerido',
+  'settings.modelSourceFree': 'Grátis',
   'settings.fetchModels': 'Buscar modelos',
   'settings.fetchModelsTitle': 'Buscar modelos disponíveis deste provedor',
   'settings.fetchModelsRunning': 'Buscando modelos…',

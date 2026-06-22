@@ -301,6 +301,7 @@ export const hu: Dict = {
   'settings.modelsLoadedCount': '✓ {count} modell betöltve.',
   'settings.modelSourceAccount': 'A fiókjából',
   'settings.modelSourceSuggested': 'Javasolt',
+  'settings.modelSourceFree': 'Ingyenes',
   'settings.fetchModels': 'Modellek lekérése',
   'settings.fetchModelsTitle': 'Elérhető modellek lekérése ettől a szolgáltatótól',
   'settings.fetchModelsRunning': 'Modellek lekérése…',

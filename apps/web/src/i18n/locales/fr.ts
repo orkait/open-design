@@ -301,6 +301,7 @@ export const fr: Dict = {
   'settings.modelsLoadedCount': '✓ {count} modèles chargés.',
   'settings.modelSourceAccount': 'Depuis votre compte',
   'settings.modelSourceSuggested': 'Suggéré',
+  'settings.modelSourceFree': 'Gratuit',
   'settings.fetchModels': 'Récupérer les modèles',
   'settings.fetchModelsTitle': 'Récupérer les modèles disponibles auprès de ce fournisseur',
   'settings.fetchModelsRunning': 'Récupération des modèles…',

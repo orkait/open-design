@@ -361,6 +361,20 @@ function hidesAccountModelSourceLabel(protocol: ApiProtocol): boolean {
   return ACCOUNT_MODEL_SOURCE_LABEL_HIDDEN.has(protocol);
 }
 
+// Providers whose hosted catalogue is free to use (NVIDIA's integrate endpoint
+// serves Nemotron + partner models on a free developer tier). Their per-option
+// badge reads "Free" instead of the account/suggested source — the model list
+// is the provider's own free catalogue, not the user's purchased account, so
+// "From your account" is both noise and misleading. Add a protocol here when
+// the same applies.
+const FREE_MODEL_SOURCE_PROVIDERS = new Set<ApiProtocol>([
+  'nvidia',
+]);
+
+function isFreeModelSourceProvider(protocol: ApiProtocol): boolean {
+  return FREE_MODEL_SOURCE_PROVIDERS.has(protocol);
+}
+
 // Fixed-origin gateway helpers (isFixedOriginGateway / resolveFixedOriginBaseUrl)
 // live in ../state/apiProtocols so config loading and the top-bar switcher share
 // the same single source of truth.
@@ -581,6 +595,10 @@ const API_KEY_CONSOLE_LINKS: Record<ApiProtocol, { host: string; url: string }> 
   aihubmix: {
     host: 'aihubmix.com',
     url: 'https://aihubmix.com/?aff=JA1e',
+  },
+  nvidia: {
+    host: 'build.nvidia.com',
+    url: 'https://build.nvidia.com',
   },
 };
 
@@ -4385,18 +4403,21 @@ export function SettingsDialog({
                   id: m.id,
                   label: apiModelOptionLabel(
                     m,
-                    !hidesAccountModelSourceLabel(apiProtocol) &&
-                    loadedAccountModelCount > 0
-                      ? fetchedApiModelIds.has(m.id)
-                        ? t('settings.modelSourceAccount')
-                        : t('settings.modelSourceSuggested')
-                      : undefined,
+                    isFreeModelSourceProvider(apiProtocol)
+                      ? t('settings.modelSourceFree')
+                      : !hidesAccountModelSourceLabel(apiProtocol) &&
+                        loadedAccountModelCount > 0
+                        ? fetchedApiModelIds.has(m.id)
+                          ? t('settings.modelSourceAccount')
+                          : t('settings.modelSourceSuggested')
+                        : undefined,
                   ),
                 }))}
                 modelsLoadedFromAccountMessage={
                   loadedAccountModelCount > 0
                     ? t(
-                        hidesAccountModelSourceLabel(apiProtocol)
+                        hidesAccountModelSourceLabel(apiProtocol) ||
+                        isFreeModelSourceProvider(apiProtocol)
                           ? 'settings.modelsLoadedCount'
                           : 'settings.modelsLoadedFromAccount',
                         { count: loadedAccountModelCount },

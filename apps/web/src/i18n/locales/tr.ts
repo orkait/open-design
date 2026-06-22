@@ -301,6 +301,7 @@ export const tr: Dict = {
   'settings.modelsLoadedCount': '✓ {count} model yüklendi.',
   'settings.modelSourceAccount': 'Hesabınızdan',
   'settings.modelSourceSuggested': 'Önerilen',
+  'settings.modelSourceFree': 'Ücretsiz',
   'settings.fetchModels': 'Modelleri getir',
   'settings.fetchModelsTitle': 'Bu sağlayıcıdan kullanılabilir modelleri getir',
   'settings.fetchModelsRunning': 'Modeller getiriliyor…',
