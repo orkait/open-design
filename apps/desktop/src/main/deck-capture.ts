@@ -1,5 +1,3 @@
-import zlib from "node:zlib";
-
 import { BrowserWindow, nativeImage } from "electron";
 import type { DesktopRenderSlidesInput, DesktopRenderSlidesResult } from "@open-design/sidecar-proto";
 
@@ -289,9 +287,12 @@ async function isBelowFoldBlank(
 }
 
 // Scrolls the page one viewport at a time, captures each frame, and stitches
-// them into one tall PNG by real scroll offset (overlaps overwrite identically).
-// RAM-bound (a plain RGBA buffer, not a GPU texture), so it is not subject to
-// the texture limit and supports very long pages up to the memory budget.
+// them by real scroll offset into one tall BGRA buffer, then encodes once with
+// Electron's native PNG encoder. Stitching is a single Buffer.copy per chunk
+// (no per-pixel JS, no channel swap — capturePage already gives BGRA, which is
+// what createFromBitmap wants) and the encode is native C++, so this is fast
+// even for long pages. createFromBitmap is a CPU bitmap, so it is NOT bound by
+// the GPU texture limit; height is bounded only by the caller's RAM cap.
 async function scrollSegmentStitch(
   window: BrowserWindow,
   totalLogical: number,
@@ -305,7 +306,7 @@ async function scrollSegmentStitch(
   let scale = 0;
   let W = 0;
   let H = 0;
-  let rgba: Buffer | null = null;
+  let bgra: Buffer | null = null;
 
   for (let y = 0; ; y += PAGE_VIEW_H) {
     const target = Math.min(y, maxScroll);
@@ -316,89 +317,38 @@ async function scrollSegmentStitch(
     const image = await window.webContents.capturePage({ x: 0, y: 0, width: PAGE_W, height: PAGE_VIEW_H });
     const bmp = image.toBitmap(); // BGRA
     const size = image.getSize();
-    if (!rgba) {
+    if (!bgra) {
       scale = Math.max(1, Math.round(size.width / PAGE_W));
       W = PAGE_W * scale;
       H = totalLogical * scale;
-      rgba = Buffer.alloc(W * H * 4);
+      bgra = Buffer.alloc(W * H * 4);
     }
-    const destY = actualY * scale;
-    const rows = Math.min(size.height, H - destY);
-    for (let r = 0; r < rows; r++) {
-      const src = r * size.width * 4;
-      const dst = (destY + r) * W * 4;
-      for (let x = 0; x < size.width && x < W; x++) {
-        const s = src + x * 4;
-        const d = dst + x * 4;
-        rgba[d] = bmp[s + 2]!; // R <- B
-        rgba[d + 1] = bmp[s + 1]!; // G
-        rgba[d + 2] = bmp[s]!; // B <- R
-        rgba[d + 3] = bmp[s + 3]!; // A
+    // Chunk width matches W (captured at PAGE_W), so each chunk's rows are
+    // contiguous and full-width — copy the whole block in one native memcpy.
+    if (size.width === W) {
+      const destStart = actualY * scale * W * 4;
+      const rows = Math.min(size.height, H - actualY * scale);
+      bmp.copy(bgra, destStart, 0, rows * W * 4);
+    } else {
+      // Defensive: width mismatch — copy row by row (still native per-row copy).
+      const rows = Math.min(size.height, H - actualY * scale);
+      for (let r = 0; r < rows; r++) {
+        bmp.copy(bgra, (actualY * scale + r) * W * 4, r * size.width * 4, r * size.width * 4 + Math.min(size.width, W) * 4);
       }
     }
     if (target >= maxScroll) break;
   }
 
-  const buf = encodePngRgba(rgba ?? Buffer.alloc(0), W, H);
+  const png = nativeImage
+    .createFromBitmap(bgra ?? Buffer.alloc(4), { width: W || 1, height: H || 1 })
+    .toPNG();
   return {
     ok: true,
-    slides: [`data:image/png;base64,${buf.toString("base64")}`],
+    slides: [`data:image/png;base64,${png.toString("base64")}`],
     width: W,
     height: H,
     mode: "page",
   };
-}
-
-// Minimal PNG encoder (8-bit RGBA) using node:zlib. Pure ESM — avoids a CJS
-// image dependency (which breaks the ESM-bundled packaged main) and the Skia
-// dimension cap, so the stitched long image is bounded only by RAM.
-function encodePngRgba(rgba: Buffer, width: number, height: number): Buffer {
-  const stride = width * 4;
-  const raw = Buffer.allocUnsafe((stride + 1) * height);
-  for (let y = 0; y < height; y++) {
-    raw[y * (stride + 1)] = 0; // filter type 0 (none)
-    rgba.copy(raw, y * (stride + 1) + 1, y * stride, y * stride + stride);
-  }
-  const idat = zlib.deflateSync(raw, { level: 6 });
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(width, 0);
-  ihdr.writeUInt32BE(height, 4);
-  ihdr[8] = 8; // bit depth
-  ihdr[9] = 6; // color type RGBA
-  ihdr[10] = 0; // compression
-  ihdr[11] = 0; // filter
-  ihdr[12] = 0; // interlace
-  const SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-  return Buffer.concat([
-    SIGNATURE,
-    pngChunk("IHDR", ihdr),
-    pngChunk("IDAT", idat),
-    pngChunk("IEND", Buffer.alloc(0)),
-  ]);
-}
-
-function pngChunk(type: string, data: Buffer): Buffer {
-  const typeBuf = Buffer.from(type, "ascii");
-  const len = Buffer.alloc(4);
-  len.writeUInt32BE(data.length, 0);
-  const crcBuf = Buffer.alloc(4);
-  crcBuf.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
-  return Buffer.concat([len, typeBuf, data, crcBuf]);
-}
-
-let CRC_TABLE: Uint32Array | null = null;
-function crc32(buf: Buffer): number {
-  if (!CRC_TABLE) {
-    CRC_TABLE = new Uint32Array(256);
-    for (let n = 0; n < 256; n++) {
-      let c = n;
-      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-      CRC_TABLE[n] = c >>> 0;
-    }
-  }
-  let crc = 0xffffffff;
-  for (let i = 0; i < buf.length; i++) crc = CRC_TABLE[(crc ^ buf[i]!) & 0xff]! ^ (crc >>> 8);
-  return (crc ^ 0xffffffff) >>> 0;
 }
 
 function range(n: number): number[] {
