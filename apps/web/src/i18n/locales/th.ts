@@ -301,6 +301,7 @@ export const th: Dict = {
   'settings.modelsLoadedCount': '✓ โหลด {count} โมเดลแล้ว',
   'settings.modelSourceAccount': 'จากบัญชีของคุณ',
   'settings.modelSourceSuggested': 'แนะนำ',
+  'settings.modelSourceFree': 'ฟรี',
   'settings.fetchModels': 'ดึงโมเดล',
   'settings.fetchModelsTitle': 'ดึงโมเดลที่มีอยู่จากผู้ให้บริการนี้',
   'settings.fetchModelsRunning': 'กำลังดึงโมเดล…',

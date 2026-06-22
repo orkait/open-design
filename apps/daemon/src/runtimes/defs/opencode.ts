@@ -26,6 +26,12 @@ export const opencodeAgentDef = {
       },
       { id: 'openai/gpt-5', label: 'openai/gpt-5' },
       { id: 'google/gemini-2.5-pro', label: 'google/gemini-2.5-pro' },
+      // NVIDIA Nemotron via OpenCode's own catalog. The `opencode/...-free`
+      // route needs no key; the `openrouter/...:free` route uses an OpenRouter
+      // key (not the BYOK NVIDIA key — that path is BYOK-only). Kept here so the
+      // picker still surfaces Nemotron when live `opencode models` times out.
+      { id: 'opencode/nemotron-3-ultra-free', label: 'opencode/nemotron-3-ultra-free' },
+      { id: 'openrouter/nvidia/nemotron-3-nano-30b-a3b:free', label: 'openrouter/nvidia/nemotron-3-nano-30b-a3b:free' },
     ],
     // OpenCode's CLI help currently exposes model selection and session
     // controls, but not an explicit per-run reasoning / effort flag. Keep

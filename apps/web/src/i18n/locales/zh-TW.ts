@@ -301,6 +301,7 @@ export const zhTW: Dict = {
   'settings.modelsLoadedCount': '✓ 已載入 {count} 個模型。',
   'settings.modelSourceAccount': '來自你的帳戶',
   'settings.modelSourceSuggested': '建議',
+  'settings.modelSourceFree': '免費',
   'settings.fetchModels': '取得模型',
   'settings.fetchModelsTitle': '從此供應商取得可用模型',
   'settings.fetchModelsRunning': '正在擷取模型…',

@@ -324,6 +324,7 @@ export interface Dict {
   'settings.modelsLoadedCount': string;
   'settings.modelSourceAccount': string;
   'settings.modelSourceSuggested': string;
+  'settings.modelSourceFree': string;
   'settings.fetchModels': string;
   'settings.fetchModelsTitle': string;
   'settings.fetchModelsRunning': string;

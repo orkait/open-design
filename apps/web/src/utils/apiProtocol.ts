@@ -9,6 +9,7 @@ const API_PROTOCOL_LABELS: Record<ApiProtocol, string> = {
   ollama: 'Ollama Cloud API',
   senseaudio: 'SenseAudio API',
   aihubmix: 'AIHubMix API',
+  nvidia: 'NVIDIA API',
 };
 
 const API_PROTOCOL_AGENT_IDS: Record<ApiProtocol, string> = {
@@ -19,6 +20,7 @@ const API_PROTOCOL_AGENT_IDS: Record<ApiProtocol, string> = {
   ollama: 'ollama-cloud-api',
   senseaudio: 'senseaudio-api',
   aihubmix: 'aihubmix-api',
+  nvidia: 'nvidia-api',
 };
 
 export function apiProtocolLabel(protocol: ApiProtocol | undefined): string {

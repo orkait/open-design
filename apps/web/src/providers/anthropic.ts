@@ -67,7 +67,14 @@ export async function streamMessage(
   if (cfg.apiProtocol === 'aihubmix') {
     return streamMessageAIHubMix(cfg, system, history, signal, handlers, context);
   }
-  if (cfg.apiProtocol === 'openai' || (!cfg.apiProtocol && isOpenAICompatible(cfg.model, cfg.baseUrl))) {
+  // NVIDIA serves Nemotron through an OpenAI-compatible endpoint
+  // (integrate.api.nvidia.com/v1), so it reuses the generic OpenAI proxy with
+  // the NVIDIA base URL resolved from the fixed-origin gateway.
+  if (
+    cfg.apiProtocol === 'openai' ||
+    cfg.apiProtocol === 'nvidia' ||
+    (!cfg.apiProtocol && isOpenAICompatible(cfg.model, cfg.baseUrl))
+  ) {
     return streamMessageOpenAI(cfg, system, history, signal, handlers);
   }
 
